@@ -1,1 +1,310 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel · Marta Andreolli</title>
+<style>
+:root{--b:#8f5f3a;--bl:#b88555;--bg:#faf7f3;--ink:#16120f;--line:#e6ddd2;--mut:#776d63}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);height:100vh;overflow:hidden}
+.scr{display:none;height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;padding:24px}
+.scr.on{display:flex}.scr h1{margin:0;font-size:1.5rem}.scr p{margin:0;color:var(--mut);max-width:42ch}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 12px;color:var(--ink)}
+button:hover{border-color:var(--bl)}
+.pri{background:linear-gradient(135deg,#b88555,#8f5f3a);color:#fff;border:0}
+.dng{color:#b3261e}
+#app{display:none;height:100vh;grid-template-rows:52px 1fr}#app.on{display:grid}
+.bar{display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid var(--line)}
+.bar select{width:auto}.sp{flex:1}
+.main{display:grid;grid-template-columns:1fr 370px;min-height:0}
+.stage{background:#e9e3da;display:flex;justify-content:center;overflow:hidden}
+iframe{border:0;background:#fff;width:100%;height:100%}
+aside{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;border:0;border-radius:0;background:none;padding:11px 2px;font-size:12.5px}
+.tabs .on{border-bottom:2px solid var(--b);color:var(--b);font-weight:600}
+.pane{display:none;padding:14px;overflow:auto;flex:1}.pane.on{display:block}
+label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+input[type=color]{padding:2px;height:36px}input[type=checkbox]{width:auto}
+.card{border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0}
+.row{display:flex;gap:8px;align-items:flex-end}.row>*{flex:1;min-width:0}
+.hint{font-size:12px;color:var(--mut)}.ok{color:#2e7d4f}.err{color:#b3261e}
+.tg{display:flex;gap:8px;align-items:center;margin:6px 0}
+h3{margin:14px 0 4px;font-size:.95rem}
+.list div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+@media(max-width:900px){.main{grid-template-columns:1fr}aside{display:none}}
+</style>
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="google-sync.js"></script>
+</head>
+<body>
 
+<div class="scr on" id="s-load"><p>Carregando…</p></div>
+<div class="scr" id="s-login">
+  <h1>Painel · Marta Andreolli</h1>
+  <p>Acesso restrito. Entre com a conta autorizada para editar o site.</p>
+  <button class="pri" id="go">Entrar com Google</button>
+  <a href="../index.html" class="hint">← voltar ao site</a>
+</div>
+<div class="scr" id="s-deny">
+  <h1>Sem acesso ao painel</h1>
+  <p>A conta <b id="denyMail"></b> está cadastrada apenas como cliente. Peça a liberação à responsável pelo site.</p>
+  <div><button id="denyOut">Sair</button> <a href="../index.html"><button>Ir para o site</button></a></div>
+</div>
+
+<div id="app">
+  <div class="bar">
+    <strong>Painel</strong>
+    <select id="goto"><option value="#topo">Topo</option><option value="#servicos">Serviços</option><option value="#portfolio">Portfólio</option><option value="#sobre">Sobre</option><option value="#equipe">Equipe</option><option value="#depoimentos">Clientes</option><option value="#local">Onde estamos</option></select>
+    <button id="vw">📱 Celular</button>
+    <span id="stat" class="hint"></span>
+    <span class="sp"></span>
+    <a href="../index.html" target="_blank" class="hint">Ver site ↗</a>
+    <span id="who" class="hint"></span>
+    <button id="out">Sair</button>
+  </div>
+  <div class="main">
+    <div class="stage"><iframe id="ifr" title="Site"></iframe></div>
+    <aside>
+      <div class="tabs" id="tabs">
+        <button data-t="edit" class="on">Editar</button><button data-t="rev">Avaliações</button><button data-t="g">Google</button><button data-t="geral">Geral</button><button data-t="acc" id="tAcc" style="display:none">Acessos</button>
+      </div>
+      <div class="pane on" id="p-edit"></div>
+      <div class="pane" id="p-rev"></div>
+      <div class="pane" id="p-g"></div>
+      <div class="pane" id="p-geral"></div>
+      <div class="pane" id="p-acc"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+firebase.initializeApp(FB_CFG);
+const auth = firebase.auth(), db = firebase.firestore();
+let me = '', isOwner = false, ifr = $('#ifr'), W, D, sel = null, saveT, state = { edits: {}, adds: [], vars: {}, quotes: null, instagram: '' };
+
+const show = id => $$('.scr').forEach(s => s.classList.toggle('on', s.id === id));
+const stat = (t, bad) => { const e = $('#stat'); e.textContent = t; e.className = 'hint ' + (bad ? 'err' : ''); };
+
+/* ---------- login e permissão ---------- */
+$('#go').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
+$('#out').onclick = $('#denyOut').onclick = () => auth.signOut();
+auth.onAuthStateChanged(async u => {
+  if (!u) return show('s-login');
+  const em = (u.email || '').toLowerCase();
+  isOwner = em === OWNER_EMAIL.toLowerCase() && u.emailVerified;
+  let ok = isOwner;
+  if (!ok) { try { ok = (await db.doc('admins/' + em).get()).exists; } catch (e) {} }
+  // quem entra como cliente fica registrado, mas não acessa o painel
+  db.doc('users/' + u.uid).set({ email: u.email, name: u.displayName || '', photo: u.photoURL || '', lastLogin: Date.now() }).catch(() => {});
+  if (!ok) { $('#denyMail').textContent = em; return show('s-deny'); }
+  me = em; $('#who').textContent = em; $('#tAcc').style.display = isOwner ? '' : 'none';
+  show(null); $('#app').classList.add('on'); start();
+});
+
+/* ---------- carregar conteúdo e abrir o site ---------- */
+async function start() {
+  try { const s = await db.doc('site/content').get(); if (s.exists) state = Object.assign(state, s.data()); } catch (e) { stat('Erro ao ler: ' + e.message, 1); }
+  state.edits = state.edits || {}; state.adds = state.adds || []; state.vars = state.vars || {};
+  ifr.onload = () => {
+    W = ifr.contentWindow; D = W.document; let t = 0;
+    const iv = setInterval(() => { if (W.__cmsReady || ++t > 80) { clearInterval(iv); bind(); } }, 100);
+  };
+  ifr.src = '../index.html?admin=1';
+  renderG(); googleSync(db, false).then(r => r.ok && stat('Google atualizado ✓')).catch(e => stat(e.message, 1));
+}
+
+/* ---------- salvar (automático, aparece no site em tempo real) ---------- */
+function save() {
+  stat('Salvando…'); clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    try {
+      const body = JSON.stringify(state); if (body.length > 900000) throw new Error('conteúdo muito grande');
+      await db.doc('site/content').set({ ...JSON.parse(body), updatedAt: Date.now(), by: me });
+      stat('Salvo ✓ (já no ar)');
+    } catch (e) { stat('Erro ao salvar: ' + e.message, 1); }
+  }, 700);
+}
+const ensure = el => state.edits[el.dataset.eid] || (state.edits[el.dataset.eid] = { o: el.dataset.o });
+const rec = (el, patch) => { Object.assign(ensure(el), patch); save(); };
+const cleanHTML = el => {
+  const c = el.cloneNode(true);
+  [c, ...c.querySelectorAll('*')].forEach(x => { x.classList.remove('__sel', '__hov'); x.removeAttribute('contenteditable'); if (!x.getAttribute('class')) x.removeAttribute('class'); });
+  return c.innerHTML;
+};
+const INL = /^(A|B|I|EM|STRONG|SPAN|BR|SMALL|U|MARK|SUP|SUB|SVG|IMG)$/;
+const isLeaf = el => !/^(IMG|VIDEO|IFRAME|INPUT|SELECT|TEXTAREA|HR|BR)$/.test(el.tagName) && [...el.children].every(c => INL.test(c.tagName.toUpperCase())) && el.textContent.trim().length > 0;
+
+/* ---------- edição direta no site ---------- */
+function bind() {
+  const st = D.createElement('style');
+  st.textContent = '.__hov{outline:1px dashed #b88555!important;outline-offset:2px;cursor:pointer!important}.__sel{outline:2px solid #8f5f3a!important;outline-offset:2px}[contenteditable=true]{cursor:text!important}';
+  D.head.appendChild(st);
+  let hov = null;
+  D.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('[data-eid]'); if (hov) hov.classList.remove('__hov'); hov = el; if (el && el !== sel) el.classList.add('__hov'); });
+  D.addEventListener('click', e => {
+    const el = e.target.closest && e.target.closest('[data-eid]'); if (!el) return;
+    e.preventDefault(); e.stopPropagation(); if (el !== sel) pick(el);
+  }, true);
+  D.addEventListener('submit', e => e.preventDefault(), true);
+  D.addEventListener('input', e => { const el = e.target.closest && e.target.closest('[data-eid]'); if (el && el === sel) rec(el, { h: cleanHTML(el) }); });
+  renderInsp(); renderRev(); renderGeral();
+}
+function pick(el) {
+  if (sel) { sel.removeAttribute('contenteditable'); sel.classList.remove('__sel'); }
+  sel = el; el.classList.remove('__hov'); el.classList.add('__sel');
+  if (isLeaf(el)) { el.setAttribute('contenteditable', 'true'); el.focus(); }
+  tab('edit'); renderInsp();
+}
+function setCss(prop, val) {
+  sel.style.setProperty(prop, val);
+  const e = ensure(sel); e.css = { ...(e.css || {}) };
+  if (val === '') delete e.css[prop]; else e.css[prop] = val; save();
+}
+async function upload(file) {
+  try {
+    const r = firebase.storage().ref('site/' + Date.now() + '-' + file.name.replace(/[^\w.-]/g, '_'));
+    await r.put(file); return await r.getDownloadURL();
+  } catch (e) { alert('Não foi possível enviar a imagem (o Armazenamento do Firebase precisa estar ativo). Cole o link da imagem no campo ao lado.\n\n' + e.message); return null; }
+}
+function renderInsp() {
+  const p = $('#p-edit');
+  if (!sel) { p.innerHTML = '<p class="hint">Clique em qualquer texto, imagem ou botão do site, à esquerda, para editar. As alterações são salvas sozinhas e aparecem no site na hora.</p>'; return; }
+  const e = state.edits[sel.dataset.eid] || {}, cs = W.getComputedStyle(sel);
+  const a = sel.closest('a[data-eid]'), imgs = sel.tagName === 'IMG' ? [sel] : [...sel.querySelectorAll('img[data-eid]')];
+  const hex = c => { const m = c.match(/[\d.]+/g); return (!m || (m.length > 3 && +m[3] === 0)) ? null : '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join(''); };
+  const isClone = sel.dataset.eid[0] === 'a';
+  p.innerHTML = `<div class="hint"><b>&lt;${sel.tagName.toLowerCase()}&gt;</b> ${isLeaf(sel) ? '· digite direto no site para mudar o texto' : '· bloco: clique no texto dentro dele para editar'}</div>`
+    + (a ? `<label>Link</label><input id="i-href" value="${esc(a.getAttribute('href') || '')}">` : '')
+    + imgs.map((im, i) => `<div class="card"><div class="row"><img src="${esc(im.currentSrc || im.src)}" style="max-width:64px;max-height:46px;object-fit:cover;flex:0 0 auto"><div><label>Imagem (link)</label><input data-img="${i}" value="${esc(im.getAttribute('src') || '')}"></div></div><label>…ou enviar do computador</label><input type="file" accept="image/*" data-up="${i}"></div>`).join('')
+    + `<div class="row"><div><label>Cor do texto</label><input type="color" id="i-c" value="${hex(cs.color) || '#000000'}"></div><div><label>Cor de fundo</label><input type="color" id="i-bg" value="${hex(cs.backgroundColor) || '#ffffff'}"></div><div><label>Tamanho (px)</label><input type="number" id="i-fs" value="${parseInt(cs.fontSize)}"></div></div>`
+    + `<label>Alinhamento</label><select id="i-al"><option value="">—</option><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select>`
+    + `<div class="row" style="margin-top:14px"><button id="b-dup">⧉ Duplicar</button><button id="b-hide">${e.hide ? '👁 Mostrar' : '🚫 Ocultar'}</button></div>`
+    + `<div class="row" style="margin-top:8px"><button id="b-rev">↺ Reverter este item</button>${isClone ? '<button id="b-del" class="dng">Remover cópia</button>' : ''}</div>`;
+  const $p = s => $(s, p);
+  if (a) $p('#i-href').onchange = ev => { a.setAttribute('href', ev.target.value); rec(a, { href: ev.target.value }); };
+  $$('[data-img]', p).forEach(inp => inp.onchange = () => { const im = imgs[inp.dataset.img]; im.removeAttribute('srcset'); im.setAttribute('src', inp.value); rec(im, { src: inp.value }); });
+  $$('[data-up]', p).forEach(inp => inp.onchange = async () => {
+    if (!inp.files[0]) return; stat('Enviando imagem…'); const url = await upload(inp.files[0]); if (!url) return stat('');
+    const im = imgs[inp.dataset.up]; im.removeAttribute('srcset'); im.setAttribute('src', url); rec(im, { src: url }); renderInsp();
+  });
+  $p('#i-c').oninput = ev => setCss('color', ev.target.value);
+  $p('#i-bg').oninput = ev => setCss('background-color', ev.target.value);
+  $p('#i-fs').onchange = ev => setCss('font-size', ev.target.value ? ev.target.value + 'px' : '');
+  $p('#i-al').onchange = ev => setCss('text-align', ev.target.value);
+  $p('#b-hide').onclick = () => { const h = !(state.edits[sel.dataset.eid] || {}).hide; rec(sel, { hide: h }); sel.style.opacity = h ? '.3' : ''; renderInsp(); };
+  $p('#b-rev').onclick = () => { delete state.edits[sel.dataset.eid]; save(); sel = null; setTimeout(() => ifr.contentWindow.location.reload(), 900); };
+  $p('#b-dup').onclick = () => {
+    const c = sel.cloneNode(true), stamp = 'a' + Date.now().toString(36); let k = 0;
+    [c, ...c.querySelectorAll('*')].forEach(x => { x.classList.remove('__sel', '__hov'); x.removeAttribute('contenteditable'); if (x.dataset && x.dataset.eid) x.dataset.eid = stamp + '.' + (k++); });
+    sel.after(c); state.adds.push({ id: stamp, after: sel.dataset.eid, html: c.outerHTML }); save(); pick(c);
+  };
+  if (isClone) $p('#b-del').onclick = () => {
+    const pre = sel.dataset.eid.split('.')[0]; state.adds = state.adds.filter(x => x.id !== pre);
+    Object.keys(state.edits).forEach(k => { if (k.startsWith(pre + '.')) delete state.edits[k]; });
+    sel.remove(); sel = null; save(); renderInsp();
+  };
+  const al = $p('#i-al'); al.value = (e.css || {})['text-align'] || '';
+}
+
+/* ---------- abas ---------- */
+function tab(t) { $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); }
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
+$('#goto').onchange = e => { if (W) W.location.hash = e.target.value; };
+$('#vw').onclick = () => { const m = ifr.style.width !== '390px'; ifr.style.width = m ? '390px' : ''; $('#vw').textContent = m ? '🖥 Computador' : '📱 Celular'; };
+
+/* ---------- avaliações (modo manual: usado quando a API do Google está desligada) ---------- */
+function renderRev() {
+  const p = $('#p-rev');
+  if (state.quotes == null) state.quotes = JSON.parse(JSON.stringify((W.__cms && W.__cms.builtin) || []));
+  p.innerHTML = '<p class="hint">Estas avaliações aparecem no site quando a API do Google está <b>desligada</b>. Com ela ligada, o site mostra as avaliações vindas do Google.</p>'
+    + state.quotes.map((q, i) => `<div class="card" data-i="${i}"><label>Nome</label><input data-k="n" value="${esc(q.n)}"><label>Texto</label><textarea data-k="t" rows="3">${esc(q.t)}</textarea><div class="row"><div><label>Estrelas</label><select data-k="s">${[5, 4, 3, 2, 1].map(n => `<option ${((q.s || 5) === n) ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div><label>Foto (link)</label><input data-k="photo" value="${esc(q.photo && q.photo.length < 300 ? q.photo : '')}" placeholder="opcional"></div></div><label>Resposta do proprietário</label><input data-k="reply" value="${esc(q.reply || '')}"><button class="dng" data-del style="margin-top:8px">Remover</button></div>`).join('')
+    + '<button id="rv-add" class="pri">+ Adicionar avaliação</button>';
+  p.oninput = e => {
+    const k = e.target.dataset.k, c = e.target.closest('.card'); if (!k || !c) return;
+    const q = state.quotes[c.dataset.i]; q[k] = k === 's' ? +e.target.value : e.target.value;
+    if (k === 'photo' && !e.target.value) delete q.photo; save(); W.__cms.renderQuotes(state.quotes);
+  };
+  p.onclick = e => {
+    if (e.target.id === 'rv-add') { state.quotes.push({ n: '', t: '', r: 'Avaliação no Google', s: 5 }); save(); renderRev(); }
+    if (e.target.dataset.del !== undefined) { state.quotes.splice(e.target.closest('.card').dataset.i, 1); save(); renderRev(); W.__cms.renderQuotes(state.quotes.length ? state.quotes : W.__cms.builtin); }
+  };
+}
+
+/* ---------- Google (Places API) ---------- */
+async function renderG() {
+  const p = $('#p-g'); let g = {}, d = {};
+  try { const s = await db.doc('site/google').get(); if (s.exists) g = s.data(); const s2 = await db.doc('site/gdata').get(); if (s2.exists) d = s2.data(); } catch (e) {}
+  const dt = d.data || {};
+  p.innerHTML = `<div class="tg"><input type="checkbox" id="g-on" ${g.enabled ? 'checked' : ''}><b>Puxar dados do Google automaticamente</b></div>
+  <p class="hint"><b>Ligado:</b> endereço, telefone, horários, nota, total e avaliações vêm do Google e se atualizam sozinhos. <b>Desligado:</b> vale o que você edita e adiciona aqui.</p>
+  <label>Chave da API (Places API New)</label><input type="password" id="g-key" value="${esc(g.apiKey || '')}" placeholder="cole a chave aqui" autocomplete="off">
+  <label>Place ID do studio</label><input id="g-pid" value="${esc(g.placeId || 'ChIJBypk_sn1xZQR-dT_t1FSzK0')}">
+  <label>Atualizar a cada</label><select id="g-ev">${[[24, '1 dia (recomendado)'], [48, '2 dias'], [72, '3 dias'], [168, '7 dias']].map(o => `<option value="${o[0]}" ${(g.everyHours || 24) === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+  <div class="row" style="margin-top:12px"><button class="pri" id="g-save">Salvar</button><button id="g-now">Atualizar agora</button></div>
+  <p id="g-msg" class="hint"></p>
+  <div class="card"><b>Última leitura</b><div class="hint">${d.fetchedAt ? new Date(d.fetchedAt).toLocaleString('pt-BR') + ' · ' + (d.calls || 0) + ' consulta(s) neste mês' : 'ainda não houve leitura'}</div>
+  ${dt.address ? `<div class="hint" style="margin-top:6px">${esc(dt.name)}<br>${esc(dt.address)}<br>${esc(dt.phone)}<br>Nota ${dt.rating} · ${dt.count} avaliações · ${(dt.reviews || []).length} textos</div>` : ''}</div>
+  <h3>Como pegar a chave (grátis)</h3>
+  <ol class="hint" style="padding-left:18px;margin:0">
+    <li>Acesse console.cloud.google.com e use o projeto do Firebase (ou crie um). Ative o faturamento: pede cartão, mas o uso aqui cabe na cota gratuita.</li>
+    <li>Em “APIs e serviços”, ative a <b>Places API (New)</b>.</li>
+    <li>Em “Credenciais”, crie uma chave de API e restrinja: só a Places API (New) e só os endereços do seu site (referenciadores HTTP).</li>
+    <li>Cole a chave acima e ligue o botão.</li>
+  </ol>
+  <p class="hint">A chave fica guardada só para administradores; visitantes nunca a recebem. O site consulta o Google no máximo no intervalo escolhido (≈30 vezes/mês no padrão) e para sozinho em 900 consultas/mês, para você nunca sair da cota gratuita (confira os limites atuais no console do Google).</p>
+  <p class="hint">A atualização roda quando um administrador abre este painel ou o site logado.</p>`;
+  const msg = (t, bad) => { const m = $('#g-msg'); m.textContent = t; m.className = 'hint ' + (bad ? 'err' : 'ok'); };
+  const saveCfg = async () => {
+    const cfg = { enabled: $('#g-on').checked, apiKey: $('#g-key').value.trim(), placeId: $('#g-pid').value.trim(), everyHours: +$('#g-ev').value, updatedAt: Date.now() };
+    await db.doc('site/google').set(cfg); await db.doc('site/gdata').set({ enabled: cfg.enabled }, { merge: true }); return cfg;
+  };
+  $('#g-save').onclick = async () => {
+    try { const c = await saveCfg(); msg('Configuração salva.'); if (c.enabled && c.apiKey) { await googleSync(db, true); msg('Salvo e dados do Google carregados ✓'); renderG(); } } catch (e) { msg(e.message, 1); }
+  };
+  $('#g-now').onclick = async () => { try { await saveCfg(); msg('Buscando…'); await googleSync(db, true); msg('Atualizado ✓'); renderG(); } catch (e) { msg(e.message, 1); } };
+}
+
+/* ---------- geral: Instagram e cores ---------- */
+function rootVars() {
+  const out = {};
+  for (const ss of D.styleSheets) { try { for (const r of ss.cssRules) if (r.selectorText === ':root') for (const p of r.style) if (p.startsWith('--')) { let v = r.style.getPropertyValue(p).trim(); if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) { if (v.length === 4) v = '#' + [...v.slice(1)].map(c => c + c).join(''); out[p] = v; } } } catch (e) {} }
+  return out;
+}
+function renderGeral() {
+  const p = $('#p-geral'), vars = rootVars();
+  p.innerHTML = `<label>Instagram (somente o @)</label><input id="ig" value="${esc(state.instagram || '')}" placeholder="@seuperfil"><p class="hint">Aparece como botão “Instagram” em “Onde estamos” e no rodapé.</p>
+  <h3>Cores do site</h3>${Object.keys(vars).map(k => `<div class="row" style="margin-bottom:6px"><span class="hint" style="flex:1">${k}</span><input type="color" data-v="${k}" value="${state.vars[k] || vars[k]}" style="flex:0 0 70px"></div>`).join('') || '<p class="hint">Nenhuma cor simples encontrada.</p>'}
+  <button id="rs" style="margin-top:8px">Restaurar cores originais</button>`;
+  $('#ig', p).oninput = e => { state.instagram = e.target.value; save(); const u = state.instagram.replace(/^@/, '').trim(); $$('.igl', D).forEach(a => { a.style.display = u ? '' : 'none'; if (u) a.href = 'https://www.instagram.com/' + u + '/'; }); };
+  p.oninput = e => { const k = e.target.dataset.v; if (!k) return; state.vars[k] = e.target.value; D.documentElement.style.setProperty(k, e.target.value); save(); };
+  $('#rs', p).onclick = () => { Object.keys(state.vars).forEach(k => D.documentElement.style.removeProperty(k)); state.vars = {}; save(); renderGeral(); };
+}
+
+/* ---------- acessos (só a dona) ---------- */
+async function renderAcc() {
+  const p = $('#p-acc'); p.innerHTML = '<p class="hint">Carregando…</p>';
+  let adm = [], usr = [];
+  try { adm = (await db.collection('admins').get()).docs.map(d => d.id); usr = (await db.collection('users').orderBy('lastLogin', 'desc').limit(60).get()).docs.map(d => d.data()); } catch (e) { p.innerHTML = '<p class="err">' + esc(e.message) + '</p>'; return; }
+  p.innerHTML = `<p class="hint">Só a conta <b>${esc(OWNER_EMAIL)}</b> e as contas liberadas aqui entram no painel. Qualquer outra conta só faz login como cliente no site.</p>
+  <label>Liberar uma conta Google</label><div class="row"><input id="ad-m" type="email" placeholder="email@gmail.com"><button class="pri" id="ad-add" style="flex:0 0 auto">Liberar</button></div>
+  <h3>Editores liberados</h3><div class="list">${adm.map(m => `<div><span>${esc(m)}</span><button class="dng" data-rm="${esc(m)}">Remover</button></div>`).join('') || '<p class="hint">Nenhum além da dona.</p>'}</div>
+  <h3>Clientes que já entraram</h3><div class="list">${usr.filter(u => u.email && !adm.includes(u.email.toLowerCase()) && u.email.toLowerCase() !== OWNER_EMAIL.toLowerCase()).map(u => `<div><span>${esc(u.name || '')}<br><small class="hint">${esc(u.email)}</small></span><button data-mk="${esc(u.email.toLowerCase())}">Dar acesso</button></div>`).join('') || '<p class="hint">Ainda ninguém.</p>'}</div>`;
+  const add = async m => { m = (m || '').trim().toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) return alert('E-mail inválido'); await db.doc('admins/' + m).set({ email: m, addedBy: me, at: Date.now() }); renderAcc(); };
+  $('#ad-add', p).onclick = () => add($('#ad-m', p).value);
+  p.onclick = async e => {
+    if (e.target.dataset.rm) { if (confirm('Remover o acesso de ' + e.target.dataset.rm + '?')) { await db.doc('admins/' + e.target.dataset.rm).delete(); renderAcc(); } }
+    if (e.target.dataset.mk) add(e.target.dataset.mk);
+  };
+}
+</script>
+</body>
+</html>

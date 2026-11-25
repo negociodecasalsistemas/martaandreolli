@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() { return request.auth != null && request.auth.token.email_verified == true; }
+    function isOwner() { return signed() && request.auth.token.email == 'excellentservices.excel@gmail.com'; }
+    function isAdmin() { return isOwner() || (signed() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email))); }
+
+    // conteúdo do site e cache do Google: todos leem, só administradores escrevem
+    match /site/{doc} {
+      allow read: if doc != 'google';
+      allow write: if isAdmin();
+    }
+    // configuração privada (contém a chave da API): só administradores
+    match /site/google {
+      allow read, write: if isAdmin();
+    }
+    // quem pode editar: só a dona libera ou remove
+    match /admins/{email} {
+      allow read: if signed() && (isAdmin() || request.auth.token.email == email);
+      allow write: if isOwner();
+    }
+    // clientes que fizeram login no site
+    match /users/{uid} {
+      allow create, update: if signed() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['email','name','photo','lastLogin'])
+        && request.resource.data.email == request.auth.token.email;
+      allow read: if signed() && (request.auth.uid == uid || isAdmin());
+    }
+  }
+}
