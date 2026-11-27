@@ -17,12 +17,12 @@ button:hover{border-color:var(--bl)}
 #app{display:none;height:100vh;grid-template-rows:52px 1fr}#app.on{display:grid}
 .bar{display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid var(--line)}
 .bar select{width:auto}.sp{flex:1}
-.main{display:grid;grid-template-columns:1fr 370px;min-height:0}
+.main{display:grid;grid-template-columns:1fr 400px;min-height:0}
 .stage{background:#e9e3da;display:flex;justify-content:center;overflow:hidden}
 iframe{border:0;background:#fff;width:100%;height:100%}
 aside{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .tabs{display:flex;border-bottom:1px solid var(--line)}
-.tabs button{flex:1;border:0;border-radius:0;background:none;padding:11px 2px;font-size:12.5px}
+.tabs button{flex:1;border:0;border-radius:0;background:none;padding:11px 1px;font-size:11.5px}
 .tabs .on{border-bottom:2px solid var(--b);color:var(--b);font-weight:600}
 .pane{display:none;padding:14px;overflow:auto;flex:1}.pane.on{display:block}
 label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
@@ -34,14 +34,17 @@ input[type=color]{padding:2px;height:36px}input[type=checkbox]{width:auto}
 .tg{display:flex;gap:8px;align-items:center;margin:6px 0}
 h3{margin:14px 0 4px;font-size:.95rem}
 .list div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.stt{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#fbf1d6;color:#8a6414}
+.stt.ok{background:#e3f1e6;color:#2e6b43}.stt.no{background:#f8e5e1;color:#a3392b}
+.row.wrap{flex-wrap:wrap}.row.wrap>*{flex:1 1 auto}
 @media(max-width:900px){.main{grid-template-columns:1fr}aside{display:none}}
 </style>
 <script src="firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="google-sync.js"></script>
+<script src="comanda.js"></script>
 </head>
 <body>
 
@@ -73,9 +76,10 @@ h3{margin:14px 0 4px;font-size:.95rem}
     <div class="stage"><iframe id="ifr" title="Site"></iframe></div>
     <aside>
       <div class="tabs" id="tabs">
-        <button data-t="edit" class="on">Editar</button><button data-t="rev">Avaliações</button><button data-t="g">Google</button><button data-t="geral">Geral</button><button data-t="acc" id="tAcc" style="display:none">Acessos</button>
+        <button data-t="edit" class="on">Editar</button><button data-t="agenda" id="tAg">Agenda</button><button data-t="rev">Avaliações</button><button data-t="g">Google</button><button data-t="geral">Geral</button><button data-t="acc" id="tAcc" style="display:none">Acessos</button>
       </div>
       <div class="pane on" id="p-edit"></div>
+      <div class="pane" id="p-agenda"></div>
       <div class="pane" id="p-rev"></div>
       <div class="pane" id="p-g"></div>
       <div class="pane" id="p-geral"></div>
@@ -114,6 +118,7 @@ auth.onAuthStateChanged(async u => {
 async function start() {
   try { const s = await db.doc('site/content').get(); if (s.exists) state = Object.assign(state, s.data()); } catch (e) { stat('Erro ao ler: ' + e.message, 1); }
   state.edits = state.edits || {}; state.adds = state.adds || []; state.vars = state.vars || {};
+  renderAgenda(); watchAgenda();
   ifr.onload = () => {
     W = ifr.contentWindow; D = W.document; let t = 0;
     const iv = setInterval(() => { if (W.__cmsReady || ++t > 80) { clearInterval(iv); bind(); } }, 100);
@@ -169,11 +174,31 @@ function setCss(prop, val) {
   const e = ensure(sel); e.css = { ...(e.css || {}) };
   if (val === '') delete e.css[prop]; else e.css[prop] = val; save();
 }
-async function upload(file) {
-  try {
-    const r = firebase.storage().ref('site/' + Date.now() + '-' + file.name.replace(/[^\w.-]/g, '_'));
-    await r.put(file); return await r.getDownloadURL();
-  } catch (e) { alert('Não foi possível enviar a imagem (o Armazenamento do Firebase precisa estar ativo). Cole o link da imagem no campo ao lado.\n\n' + e.message); return null; }
+/* Reduz a imagem automaticamente (lado maior limitado, WebP/JPEG comprimido até caber no limite) e devolve data URL base64. */
+async function fitImage(file, o) {
+  o = o || {}; const max = o.max || 1200, limit = o.limit || 320000;
+  if (!/^image\//.test(file.type)) throw new Error('o arquivo escolhido não é uma imagem');
+  let bmp;
+  try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  catch (e) { bmp = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error('não consegui abrir essa imagem')); im.src = URL.createObjectURL(file); }); }
+  const sw = bmp.naturalWidth || bmp.width, sh = bmp.naturalHeight || bmp.height;
+  let sx = 0, sy = 0, cw = sw, ch = sh;
+  if (o.square) { const q = Math.min(sw, sh); sx = (sw - q) / 2; sy = (sh - q) / 2; cw = ch = q; }
+  let k = Math.min(1, max / Math.max(cw, ch)), q = o.q || 0.82, mime = 'image/webp', url = '', w, h;
+  const probe = document.createElement('canvas'); probe.width = probe.height = 1;
+  if (!probe.toDataURL('image/webp').startsWith('data:image/webp')) mime = 'image/jpeg';
+  for (let i = 0; i < 14; i++) {
+    w = Math.max(1, Math.round(cw * k)); h = Math.max(1, Math.round(ch * k));
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
+    if (mime === 'image/jpeg') { g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); }
+    g.imageSmoothingQuality = 'high'; g.drawImage(bmp, sx, sy, cw, ch, 0, 0, w, h);
+    url = c.toDataURL(mime, q);
+    if (url.length <= limit) break;
+    if (q > 0.62) q -= 0.1; else k *= 0.85;
+  }
+  if (bmp.close) bmp.close();
+  if (url.length > 900000) throw new Error('a imagem continua grande demais mesmo reduzida');
+  return { url, w, h };
 }
 function renderInsp() {
   const p = $('#p-edit');
@@ -184,7 +209,7 @@ function renderInsp() {
   const isClone = sel.dataset.eid[0] === 'a';
   p.innerHTML = `<div class="hint"><b>&lt;${sel.tagName.toLowerCase()}&gt;</b> ${isLeaf(sel) ? '· digite direto no site para mudar o texto' : '· bloco: clique no texto dentro dele para editar'}</div>`
     + (a ? `<label>Link</label><input id="i-href" value="${esc(a.getAttribute('href') || '')}">` : '')
-    + imgs.map((im, i) => `<div class="card"><div class="row"><img src="${esc(im.currentSrc || im.src)}" style="max-width:64px;max-height:46px;object-fit:cover;flex:0 0 auto"><div><label>Imagem (link)</label><input data-img="${i}" value="${esc(im.getAttribute('src') || '')}"></div></div><label>…ou enviar do computador</label><input type="file" accept="image/*" data-up="${i}"></div>`).join('')
+    + imgs.map((im, i) => `<div class="card"><div class="row"><img src="${esc(im.currentSrc || im.src)}" style="max-width:64px;max-height:46px;object-fit:cover;flex:0 0 auto"><div><label>Imagem (link)</label><input data-img="${i}" value="${esc(/^data:/.test(im.getAttribute('src') || '') ? '' : (im.getAttribute('src') || ''))}" placeholder="imagem enviada do computador"></div></div><label>…ou enviar do computador</label><input type="file" accept="image/*" data-up="${i}"><div class="hint">O tamanho é ajustado automaticamente e a imagem fica salva no Firebase, junto com os textos.</div></div>`).join('')
     + `<div class="row"><div><label>Cor do texto</label><input type="color" id="i-c" value="${hex(cs.color) || '#000000'}"></div><div><label>Cor de fundo</label><input type="color" id="i-bg" value="${hex(cs.backgroundColor) || '#ffffff'}"></div><div><label>Tamanho (px)</label><input type="number" id="i-fs" value="${parseInt(cs.fontSize)}"></div></div>`
     + `<label>Alinhamento</label><select id="i-al"><option value="">—</option><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select>`
     + `<div class="row" style="margin-top:14px"><button id="b-dup">⧉ Duplicar</button><button id="b-hide">${e.hide ? '👁 Mostrar' : '🚫 Ocultar'}</button></div>`
@@ -193,8 +218,18 @@ function renderInsp() {
   if (a) $p('#i-href').onchange = ev => { a.setAttribute('href', ev.target.value); rec(a, { href: ev.target.value }); };
   $$('[data-img]', p).forEach(inp => inp.onchange = () => { const im = imgs[inp.dataset.img]; im.removeAttribute('srcset'); im.setAttribute('src', inp.value); rec(im, { src: inp.value }); });
   $$('[data-up]', p).forEach(inp => inp.onchange = async () => {
-    if (!inp.files[0]) return; stat('Enviando imagem…'); const url = await upload(inp.files[0]); if (!url) return stat('');
-    const im = imgs[inp.dataset.up]; im.removeAttribute('srcset'); im.setAttribute('src', url); rec(im, { src: url }); renderInsp();
+    const f = inp.files[0]; if (!f) return; const im = imgs[inp.dataset.up];
+    try {
+      stat('Otimizando imagem…');
+      const box = im.getBoundingClientRect(), want = Math.min(1600, Math.max(700, Math.round(Math.max(box.width, box.height) * 2) || 1200));
+      const out = await fitImage(f, { max: want });
+      stat('Salvando imagem…');
+      const id = 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      await db.doc('imgs/' + id).set({ d: out.url, w: out.w, h: out.h, by: me, at: Date.now() });
+      const prev = (state.edits[im.dataset.eid] || {}).src; if (prev && prev.startsWith('fb:')) db.doc('imgs/' + prev.slice(3)).delete().catch(() => {});
+      im.removeAttribute('srcset'); im.setAttribute('src', out.url); rec(im, { src: 'fb:' + id });
+      stat('Imagem salva ✓ (' + out.w + '×' + out.h + ', ' + Math.round(out.url.length * 0.75 / 1024) + ' KB)'); renderInsp();
+    } catch (e) { stat('Erro na imagem: ' + e.message, 1); alert('Não foi possível usar essa imagem.\n\n' + e.message); }
   });
   $p('#i-c').oninput = ev => setCss('color', ev.target.value);
   $p('#i-bg').oninput = ev => setCss('background-color', ev.target.value);
@@ -226,12 +261,18 @@ function renderRev() {
   const p = $('#p-rev');
   if (state.quotes == null) state.quotes = JSON.parse(JSON.stringify((W.__cms && W.__cms.builtin) || []));
   p.innerHTML = '<p class="hint">Estas avaliações aparecem no site quando a API do Google está <b>desligada</b>. Com ela ligada, o site mostra as avaliações vindas do Google.</p>'
-    + state.quotes.map((q, i) => `<div class="card" data-i="${i}"><label>Nome</label><input data-k="n" value="${esc(q.n)}"><label>Texto</label><textarea data-k="t" rows="3">${esc(q.t)}</textarea><div class="row"><div><label>Estrelas</label><select data-k="s">${[5, 4, 3, 2, 1].map(n => `<option ${((q.s || 5) === n) ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div><label>Foto (link)</label><input data-k="photo" value="${esc(q.photo && q.photo.length < 300 ? q.photo : '')}" placeholder="opcional"></div></div><label>Resposta do proprietário</label><input data-k="reply" value="${esc(q.reply || '')}"><button class="dng" data-del style="margin-top:8px">Remover</button></div>`).join('')
+    + state.quotes.map((q, i) => `<div class="card" data-i="${i}"><label>Nome</label><input data-k="n" value="${esc(q.n)}"><label>Texto</label><textarea data-k="t" rows="3">${esc(q.t)}</textarea><div class="row"><div><label>Estrelas</label><select data-k="s">${[5, 4, 3, 2, 1].map(n => `<option ${((q.s || 5) === n) ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div><label>Foto (link)</label><input data-k="photo" value="${esc(q.photo && q.photo.length < 300 ? q.photo : '')}" placeholder="opcional"><input type="file" accept="image/*" data-rvup style="margin-top:6px"></div></div><label>Resposta do proprietário</label><input data-k="reply" value="${esc(q.reply || '')}"><button class="dng" data-del style="margin-top:8px">Remover</button></div>`).join('')
     + '<button id="rv-add" class="pri">+ Adicionar avaliação</button>';
   p.oninput = e => {
     const k = e.target.dataset.k, c = e.target.closest('.card'); if (!k || !c) return;
     const q = state.quotes[c.dataset.i]; q[k] = k === 's' ? +e.target.value : e.target.value;
     if (k === 'photo' && !e.target.value) delete q.photo; save(); W.__cms.renderQuotes(state.quotes);
+  };
+  p.onchange = async e => {
+    if (!e.target.hasAttribute('data-rvup') || !e.target.files[0]) return;
+    const i = e.target.closest('.card').dataset.i;
+    try { const o = await fitImage(e.target.files[0], { max: 160, square: true, limit: 24000, q: 0.8 }); state.quotes[i].photo = o.url; save(); renderRev(); W.__cms.renderQuotes(state.quotes); }
+    catch (er) { alert('Não foi possível usar essa foto.\n\n' + er.message); }
   };
   p.onclick = e => {
     if (e.target.id === 'rv-add') { state.quotes.push({ n: '', t: '', r: 'Avaliação no Google', s: 5 }); save(); renderRev(); }
@@ -287,6 +328,72 @@ function renderGeral() {
   $('#ig', p).oninput = e => { state.instagram = e.target.value; save(); const u = state.instagram.replace(/^@/, '').trim(); $$('.igl', D).forEach(a => { a.style.display = u ? '' : 'none'; if (u) a.href = 'https://www.instagram.com/' + u + '/'; }); };
   p.oninput = e => { const k = e.target.dataset.v; if (!k) return; state.vars[k] = e.target.value; D.documentElement.style.setProperty(k, e.target.value); save(); };
   $('#rs', p).onclick = () => { Object.keys(state.vars).forEach(k => D.documentElement.style.removeProperty(k)); state.vars = {}; save(); renderGeral(); };
+}
+
+/* ---------- agenda: agendamentos das clientes (tempo real) ---------- */
+let BK = [], agFilter = 'pend', agUnsub = null;
+const pad2 = n => String(n).padStart(2, '0');
+const DN = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], MN = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const fmtD = k => { const [y, m, d] = k.split('-').map(Number), dt = new Date(y, m - 1, d); return DN[dt.getDay()] + ', ' + d + ' de ' + MN[m - 1]; };
+const slotId = b => b.date + '_' + b.t.replace(':', '');
+const confirmLink = id => new URL('../confirmar.html?b=' + id, location.href).href;
+const waNum = v => { const n = String(v || '').replace(/\D/g, ''); return n.length <= 11 ? '55' + n : n; };
+function watchAgenda() {
+  if (agUnsub) agUnsub();
+  agUnsub = db.collection('bookings').onSnapshot(s => {
+    BK = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    const n = BK.filter(b => b.status === 'pendente').length;
+    $('#tAg').textContent = n ? 'Agenda (' + n + ')' : 'Agenda';
+    drawAgenda();
+  }, e => stat('Agenda: ' + e.message, 1));
+}
+function renderAgenda() {
+  const p = $('#p-agenda');
+  p.innerHTML = `<div class="card" style="margin-top:0"><label style="margin-top:0">WhatsApp que recebe as confirmações</label><input id="ag-wa" inputmode="tel" placeholder="(15) 99605-4322" value="${esc(state.whats || '')}"><div class="hint">É para este número que o botão “Confirmar por WhatsApp” da cliente abre a conversa. Em branco, usa (15) 99605-4322. Salva sozinho.</div></div>
+  <label>Mostrar</label><select id="ag-f"><option value="pend">Aguardando confirmação</option><option value="ok">Confirmados (de hoje em diante)</option><option value="all">Todos</option></select>
+  <div id="ag-list"></div>
+  <p class="hint">Como funciona: a cliente reserva o horário (ele já fica bloqueado para as outras) e toca em “Confirmar por WhatsApp”. A mensagem chega no seu WhatsApp com um link: ao tocar nele, aquele agendamento é confirmado, a cliente vê “Agendamento confirmado” no site e pode imprimir a comanda. Você também pode confirmar ou cancelar por aqui.</p>`;
+  $('#ag-wa', p).oninput = e => { state.whats = e.target.value.replace(/[^\d()\s+-]/g, ''); save(); };
+  $('#ag-f', p).value = agFilter; $('#ag-f', p).onchange = e => { agFilter = e.target.value; drawAgenda(); };
+  p.onclick = agClick; drawAgenda();
+}
+function drawAgenda() {
+  const box = $('#ag-list'); if (!box) return;
+  const t = new Date(), tk = t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate());
+  const l = BK.filter(b => agFilter === 'all' ? true : agFilter === 'pend' ? b.status === 'pendente' : (b.status === 'confirmado' && b.date >= tk))
+    .sort((a, b) => (a.date + a.t) < (b.date + b.t) ? -1 : 1);
+  box.innerHTML = l.map(b => {
+    const st = b.status === 'confirmado' ? ['ok', 'Confirmado'] : b.status === 'cancelado' ? ['no', 'Cancelado'] : ['', 'Aguardando'];
+    return `<div class="card" data-b="${esc(b.id)}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(fmtD(b.date))} · ${esc(b.t)}</b><span class="stt ${st[0]}">${st[1]}</span></div>
+      <div style="margin-top:4px">${esc(b.nome + ' ' + b.sobrenome)} · ${esc(b.svcName)}</div>
+      <div class="hint">${esc(b.wa ? 'WhatsApp ' : 'Telefone ')}${esc(b.tel)} · ${esc(b.email)}</div>
+      <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">✓ Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">🖨 Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">💬 Cliente</button>' : ''}<button data-a="copy">🔗 Link</button>${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">Cancelar</button>' : ''}</div></div>`;
+  }).join('') || '<p class="hint">Nenhum agendamento aqui.</p>';
+}
+async function setBooking(b, status) {
+  const batch = db.batch(), sref = db.doc('slots/' + slotId(b));
+  if (status === 'confirmado') {
+    batch.update(db.doc('bookings/' + b.id), { status, confirmedAt: Date.now(), confirmedBy: me });
+    batch.set(sref, { date: b.date, t: b.t, status: 'confirmado', uid: b.uid, bid: b.id });
+  } else {
+    batch.update(db.doc('bookings/' + b.id), { status, cancelledAt: Date.now(), cancelledBy: me });
+    batch.delete(sref);
+  }
+  await batch.commit(); stat(status === 'confirmado' ? 'Agendamento confirmado ✓' : 'Agendamento cancelado, horário liberado ✓');
+}
+async function agClick(e) {
+  const btn = e.target.closest('[data-a]'); if (!btn) return;
+  const b = BK.find(x => x.id === btn.closest('[data-b]').dataset.b); if (!b) return; const a = btn.dataset.a;
+  try {
+    if (a === 'ok') await setBooking(b, 'confirmado');
+    else if (a === 'cx') { if (confirm('Cancelar o agendamento de ' + b.nome + ' e liberar o horário?')) await setBooking(b, 'cancelado'); }
+    else if (a === 'copy') { await navigator.clipboard.writeText(confirmLink(b.id)); stat('Link de confirmação copiado ✓'); }
+    else if (a === 'print') printComanda(b, studioInfo(D || document));
+    else if (a === 'wa') {
+      const txt = 'Olá, ' + b.nome + '! ' + (b.status === 'confirmado' ? 'Seu agendamento está confirmado ✅' : 'Sobre o seu agendamento:') + '\n\n💇 ' + b.svcName + '\n📅 ' + fmtD(b.date) + '\n⏰ ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + new URL('../index.html#agendar', location.href).href + '\n\nTe esperamos! – Marta Andreolli';
+      window.open('https://wa.me/' + waNum(b.tel) + '?text=' + encodeURIComponent(txt), '_blank');
+    }
+  } catch (er) { stat('Erro: ' + er.message, 1); alert(er.message); }
 }
 
 /* ---------- acessos (só a dona) ---------- */
