@@ -561,7 +561,6 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
         <div class="cta-row" style="margin-top:6px">
           <a class="btn solid" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=-23.4826152,-47.4591444&destination_place_id=ChIJBypk_sn1xZQR-dT_t1FSzK0">Como chegar <svg class="arr" viewBox="0 0 20 20"><path d="M3 10h13M11 4l6 6-6 6"/></svg></a>
           <a class="btn line" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=-23.4826152,-47.4591444&query_place_id=ChIJBypk_sn1xZQR-dT_t1FSzK0">Abrir no Google Maps</a>
-          <a class="btn line igl" target="_blank" rel="noopener" href="#" style="display:none">Instagram</a>
         </div>
       </div>
       <div class="map-frame">
@@ -879,6 +878,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   /* agendamento: subpágina #agendar */
   /* Instagram: coloque só o @ do perfil (ex.: 'martaandreolli'). Vazio = os links ficam escondidos. */
   var INSTAGRAM = '';
+  var ADM = /[?&]admin=1/.test(location.search); /* dentro do painel: mostra todas as etapas do agendamento para poder editar os textos */
   (function(){ var u = INSTAGRAM.replace(/^@/,'').trim(); if(!u) return; document.querySelectorAll('.igl').forEach(function(a){ a.href='https://www.instagram.com/'+u+'/'; a.style.display=''; }); })();
   var FIREBASE_CONFIG = window.FB_CFG || null; /* vem de painel/firebase-config.js */
   var fbAuth = null;
@@ -1033,6 +1033,11 @@ function renderMine(){
   }
   function renderBook(){
     var u = B.user, p = profileOf(), stage = !u ? 0 : !p ? 1 : 2;
+    if(ADM){
+      $('#stLogin').hidden = $('#stProfile').hidden = $('#stBook').hidden = $('#mineBox').hidden = false;
+      $('#bkWho').hidden = $('#bkDone').hidden = true; $('#pfAltBox').hidden = false;
+      renderSvc(); renderCal(); renderTimes(); renderSummary(); return;
+    }
     if(u) startSync(); $('#stLogin').hidden = !!u;
     $('#stProfile').hidden = stage!==1;
     $('#stBook').hidden = stage!==2;
@@ -1190,6 +1195,12 @@ function onAct(e){
     el.setAttribute('data-eid','e'+(++n)); el.setAttribute('data-o',(el.textContent||'').trim().slice(0,30));
   });
   function reindex(){ byId = {}; $$('[data-eid]').forEach(function(e){ byId[e.getAttribute('data-eid')] = e; }); }
+  /* subpágina de agendamento: só os textos fixos (ids "k…"; os textos que mudam sozinhos, como calendário e horários, ficam de fora) */
+  var kn = 0;
+  $$('.bk *').forEach(function(el){
+    if(el.closest('svg,script,style,input,#bkSvc,#calGrid,#calTitle,#bkTime,#timeHint,#mineList,#bkDone,#bkWho,#bkErr,#pfErr,.sum b,.cal-head button')) return;
+    el.setAttribute('data-eid','k'+(++kn)); el.setAttribute('data-o',(el.textContent||'').trim().slice(0,30));
+  });
   reindex();
 
   /* 2) avaliações originais do site (vira a lista inicial no painel) */
