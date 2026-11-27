@@ -92,6 +92,7 @@ h3{margin:14px 0 4px;font-size:.95rem}
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 firebase.initializeApp(FB_CFG);
+try { history.replaceState(null, '', '/'); } catch (e) {}
 const auth = firebase.auth(), db = firebase.firestore();
 let me = '', isOwner = false, ifr = $('#ifr'), W, D, sel = null, saveT, state = { edits: {}, adds: [], vars: {}, quotes: null, instagram: '' };
 
@@ -335,9 +336,21 @@ function renderGeral() {
   const p = $('#p-geral'), vars = rootVars();
   p.innerHTML = `<label>Instagram (somente o @)</label><input id="ig" value="${esc(state.instagram || '')}" placeholder="@seuperfil"><p class="hint">Aparece como botão “Instagram” em “Onde estamos” e no rodapé.</p>
   <h3>Cores do site</h3>${Object.keys(vars).map(k => `<div class="row" style="margin-bottom:6px"><span class="hint" style="flex:1">${k}</span><input type="color" data-v="${k}" value="${state.vars[k] || vars[k]}" style="flex:0 0 70px"></div>`).join('') || '<p class="hint">Nenhuma cor simples encontrada.</p>'}
-  <button id="rs" style="margin-top:8px">Restaurar cores originais</button>`;
+  <button id="rs" style="margin-top:8px">Restaurar cores originais</button>
+  <h3>Diagnóstico</h3><p class="hint">Se algo der “Missing or insufficient permissions”, clique aqui e veja qual permissão está faltando.</p><button id="dg">Testar permissões</button><pre id="dgo" class="hint" style="white-space:pre-wrap;margin-top:8px"></pre>`;
   $('#ig', p).oninput = e => { state.instagram = e.target.value; save(); const u = state.instagram.replace(/^@/, '').trim(); $$('.igl', D).forEach(a => { a.style.display = u ? '' : 'none'; if (u) a.href = 'https://www.instagram.com/' + u + '/'; }); };
   p.oninput = e => { const k = e.target.dataset.v; if (!k) return; state.vars[k] = e.target.value; D.documentElement.style.setProperty(k, e.target.value); save(); };
+  $('#dg', p).onclick = async () => {
+    const o = $('#dgo', p), out = [], u = auth.currentUser;
+    out.push('Conta: ' + (u && u.email) + ' · verificada: ' + (u && u.emailVerified) + ' · dona: ' + isOwner + ' · projeto: ' + FB_CFG.projectId);
+    const t = async (n, fn) => { try { await fn(); out.push('✓ ' + n); } catch (e) { out.push('✗ ' + n + ' → ' + e.message); } o.textContent = out.join('\n'); };
+    await t('ler agendamentos (bookings)', () => db.collection('bookings').limit(1).get());
+    await t('ler horários (slots)', () => db.collection('slots').limit(1).get());
+    await t('gravar imagem (imgs)', async () => { await db.doc('imgs/teste').set({ d: 'data:image/png;base64,AAAA', w: 1, h: 1, by: me, at: Date.now() }); await db.doc('imgs/teste').delete(); });
+    await t('gravar conteúdo do site', () => db.doc('site/content').set({ updatedAt: Date.now() }, { merge: true }));
+    await t('ler acessos (admins)', () => db.collection('admins').get());
+    out.push('\nSe aparecer ✗ em bookings, slots ou imgs, o firestore.rules novo ainda não foi publicado neste projeto.'); o.textContent = out.join('\n');
+  };
   $('#rs', p).onclick = () => { Object.keys(state.vars).forEach(k => D.documentElement.style.removeProperty(k)); state.vars = {}; save(); renderGeral(); };
 }
 
