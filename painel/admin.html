@@ -258,12 +258,14 @@ $('#goto').onchange = e => { if (W) W.location.hash = e.target.value; };
 let mobile = false;
 function fitStage() {
   const st = $('.stage'), w = st.clientWidth, h = st.clientHeight;
+  if (!w || !h) return;
   if (mobile) { ifr.style.cssText = 'width:390px;height:' + h + 'px;transform:none;flex:none;margin:0 auto'; return; }
   const DW = 1280, k = Math.min(1, w / DW);
   ifr.style.cssText = 'width:' + DW + 'px;height:' + (h / k) + 'px;transform:scale(' + k + ');transform-origin:top left;flex:none;margin:0 auto';
 }
 $('#vw').onclick = () => { mobile = !mobile; $('#vw').textContent = mobile ? '🖥 Computador' : '📱 Celular'; fitStage(); };
 window.addEventListener('resize', fitStage); fitStage();
+if (window.ResizeObserver) new ResizeObserver(fitStage).observe($('.stage'));
 
 /* ---------- avaliações (modo manual: usado quando a API do Google está desligada) ---------- */
 function renderRev() {
@@ -340,7 +342,7 @@ function renderGeral() {
 }
 
 /* ---------- agenda: agendamentos das clientes (tempo real) ---------- */
-let BK = [], agFilter = 'pend', agUnsub = null;
+let BK = [], agFilter = 'pend', agUnsub = null, agErr = '';
 const pad2 = n => String(n).padStart(2, '0');
 const DN = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], MN = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const fmtD = k => { const [y, m, d] = k.split('-').map(Number), dt = new Date(y, m - 1, d); return DN[dt.getDay()] + ', ' + d + ' de ' + MN[m - 1]; };
@@ -350,11 +352,11 @@ const waNum = v => { const n = String(v || '').replace(/\D/g, ''); return n.leng
 function watchAgenda() {
   if (agUnsub) agUnsub();
   agUnsub = db.collection('bookings').onSnapshot(s => {
-    BK = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    agErr = ''; BK = s.docs.map(d => ({ id: d.id, ...d.data() }));
     const n = BK.filter(b => b.status === 'pendente').length;
     $('#tAg').textContent = n ? 'Agenda (' + n + ')' : 'Agenda';
     drawAgenda();
-  }, e => stat('Agenda: ' + e.message, 1));
+  }, e => { agErr = /permission/i.test(e.message) ? 'Sem permissão para ler os agendamentos. Publique o arquivo firestore.rules novo em Firebase → Firestore Database → Regras (botão Publicar) e recarregue esta página.' : e.message; drawAgenda(); });
 }
 function renderAgenda() {
   const p = $('#p-agenda');
@@ -368,6 +370,7 @@ function renderAgenda() {
 }
 function drawAgenda() {
   const box = $('#ag-list'); if (!box) return;
+  if (agErr) { box.innerHTML = '<p class="hint err">' + esc(agErr) + '</p>'; return; }
   const t = new Date(), tk = t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate());
   const l = BK.filter(b => agFilter === 'all' ? true : agFilter === 'pend' ? b.status === 'pendente' : (b.status === 'confirmado' && b.date >= tk))
     .sort((a, b) => (a.date + a.t) < (b.date + b.t) ? -1 : 1);
