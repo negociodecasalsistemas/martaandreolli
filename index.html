@@ -15,6 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="painel/google-sync.js"></script>
+<script src="painel/comanda.js"></script>
 </head><body>
 <title>Marta Andreolli</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -338,6 +339,14 @@ footer{border-top:1px solid var(--line);padding-block:60px 40px}
 @media (max-width:980px){.bk-grid{grid-template-columns:1fr}.bk-side{position:static}}
 @media (max-width:620px){.panel{padding:22px 18px}.two{grid-template-columns:1fr}.cal{gap:4px}.cd{border-radius:12px;font-size:.88rem}}
 
+.stt{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#fbf1d6;color:#8a6414;font-style:normal}
+.stt.ok{background:#e3f1e6;color:#2e6b43}.stt.no{background:#f8e5e1;color:#a3392b}
+.mine .mrow{align-items:center}.mine .mrow small{color:var(--muted)}
+.macts{display:flex;gap:4px;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.mine .wal,.mine button[data-print]{font-size:.8rem;font-weight:600;color:var(--purple);padding:8px 12px;border-radius:12px;transition:background .3s}
+.mine .wal:hover,.mine button[data-print]:hover{background:var(--lilac)}
+.dsum{margin:16px 0 18px}
+.dact{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 /* onde estamos */
 .loc{display:grid;grid-template-columns:.85fr 1.15fr;gap:26px;align-items:stretch}
 .loc-card{background:#fff;border:1px solid var(--line);border-radius:28px;padding:34px 30px;display:grid;gap:22px;align-content:start;min-width:0}
@@ -610,9 +619,11 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
 
           <div id="stBook" hidden>
             <div class="panel okp" id="bkDone" hidden>
-              <h3>Horário reservado</h3>
+              <span class="stt" id="bkStt"></span>
+              <h3 id="bkDoneH" style="margin-top:12px"></h3>
               <p class="sub" id="bkDoneTxt"></p>
-              <p class="sub" style="font-size:.8rem">Este site é uma demonstração: nenhuma mensagem real foi enviada.</p>
+              <div class="sum dsum" id="bkDoneSum"></div>
+              <div class="dact" id="bkDoneAct"></div>
               <button class="btn line" id="bkAgain">Fazer outro agendamento</button>
             </div>
 
@@ -652,7 +663,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
             <div style="border:0;padding:0"><span>Contato</span><b id="sumTel">—</b></div>
           </div>
           <p class="err" id="bkErr" role="alert"></p>
-          <button class="btn solid submit" id="bkGo">Confirmar agendamento</button>
+          <button class="btn solid submit" id="bkGo">Reservar horário</button>
           <p style="font-size:.78rem;color:var(--muted);margin:14px 0 0">Ter a sáb, 8h às 18h30. Domingo e segunda: fechado.</p>
         </aside>
       </div>
@@ -824,7 +835,9 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   var cur = 0;
   function show(i){
     cur = (i+WORKS.length)%WORKS.length; var w = WORKS[cur];
-    $('#lbArt').innerHTML = art(cur+1,w.pal,motifOf(w.cat)) + pic(U(PHOTOS[w.id].split('photo-')[1].split('?')[0],1100));
+    var ti = $('.tile[data-w="'+cur+'"] img.pic'), ps = ti ? (ti.getAttribute('src')||'') : '';
+    if(ps.indexOf('images.unsplash.com')>-1) ps = U(ps.split('photo-')[1].split('?')[0],1100);
+    $('#lbArt').innerHTML = art(cur+1,w.pal,motifOf(w.cat)) + pic(ps);
     $('#lbCat').textContent = w.cat; $('#lbTitle').textContent = w.t; $('#lbDesc').textContent = w.d;
     $('#lbMeta').innerHTML = '<div><span>Profissional</span><b>'+w.who+'</b></div><div><span>Duração</span><b>'+w.time+'</b></div><div><span>Categoria</span><b>'+w.cat+'</b></div>';
   }
@@ -863,16 +876,78 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     if(v.length>2) return '('+v.slice(0,2)+') '+v.slice(2);
     return v;
   }
-  var bookings = function(){ return LS.get('ma_bookings',[]); };
+  var db = null; try{ if(window.firebase && FIREBASE_CONFIG){ if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG); db = firebase.firestore(); } }catch(e){}
+  var SLOTS = {}, MY = [], unsubSlots = null, unsubMine = null, lastStatus = {};
+  var esc = function(x){ return String(x==null?'':x).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); };
+  var slotKey = function(date,t){ return date+'_'+t.replace(':',''); };
+
+  /* WhatsApp que recebe as confirmações: configurado no painel (aba Agenda) */
+  function waNumber(){ var c = window.__siteCfg || {}, n = String(c.whats || '5515996054322').replace(/\D/g,''); if(n.length<=11) n = '55'+n; return n; }
+  function confirmUrl(id){ return new URL('confirmar.html?b='+id, location.href).href; }
+  function waLink(b){
+    var msg = 'Olá! Gostaria de confirmar meu agendamento no studio Marta Andreolli:\n\n'
+      +'👤 Cliente: '+b.nome+' '+b.sobrenome+'\n'
+      +'💇 Serviço: '+b.svcName+'\n'
+      +'📅 Data: '+dayLabel(fromKey(b.date))+'\n'
+      +'⏰ Horário: '+b.t+'\n'
+      +'📞 Contato: '+b.tel+'\n\n'
+      +'✅ Para confirmar este agendamento, toque no link:\n'+confirmUrl(b.id);
+    return 'https://wa.me/'+waNumber()+'?text='+encodeURIComponent(msg);
+  }
+  function findB(id){ var l = MY.filter(function(x){ return x.id===id; })[0]; return l || (B.done && B.done.id===id ? B.done.data : null); }
+
+  function startSync(){
+    if(!db || !B.user || !B.user.uid || unsubSlots) return;
+    unsubSlots = db.collection('slots').where('date','>=',keyOf(today)).onSnapshot(function(s){
+      SLOTS = {}; s.forEach(function(d){ SLOTS[d.id] = d.data(); });
+      if(location.hash==='#agendar' && B.user && profileOf()){ renderCal(); renderTimes(); }
+    }, function(){});
+    unsubMine = db.collection('bookings').where('uid','==',B.user.uid).onSnapshot(function(s){
+      MY = s.docs.map(function(d){ var o = d.data(); o.id = d.id; return o; });
+      MY.forEach(function(b){
+        if(lastStatus[b.id]==='pendente' && b.status==='confirmado'){
+          toast('Agendamento confirmado!');
+          if(!B.done) B.done = {id:b.id, data:b};
+        }
+        lastStatus[b.id] = b.status;
+      });
+      renderMine(); renderDone();
+    }, function(){});
+  }
+  function stopSync(){
+    if(unsubSlots) unsubSlots(); if(unsubMine) unsubMine();
+    unsubSlots = unsubMine = null; SLOTS = {}; MY = []; lastStatus = {};
+  }
+  function renderDone(){
+    var box = $('#bkDone'), d = B.done; box.hidden = !d; if(!d) return;
+    var b = findB(d.id) || d.data, ok = b.status==='confirmado', no = b.status==='cancelado';
+    $('#bkStt').className = 'stt'+(ok?' ok':no?' no':''); $('#bkStt').textContent = ok?'Confirmado':no?'Cancelado':'Aguardando confirmação';
+    $('#bkDoneH').textContent = ok?'Agendamento confirmado':no?'Agendamento cancelado':'Falta só um passo';
+    $('#bkDoneTxt').textContent = ok ? 'Tudo certo, '+b.nome+'! Seu horário está garantido. Imprima a sua comanda abaixo ou guarde esta tela.'
+      : no ? 'Este horário foi liberado.'
+      : 'Seu horário está reservado, '+b.nome+', mas só vale depois da confirmação. Toque em “Confirmar por WhatsApp”, envie a mensagem e aguarde a resposta do studio. Esta tela muda sozinha assim que for confirmado.';
+    $('#bkDoneSum').innerHTML = [['Serviço',b.svcName],['Dia',dayLabel(fromKey(b.date))],['Horário',b.t],['Cliente',b.nome+' '+b.sobrenome],['Contato',(b.wa?'WhatsApp ':'Telefone ')+b.tel]]
+      .map(function(r){ return '<div><span>'+r[0]+'</span><b>'+esc(r[1])+'</b></div>'; }).join('');
+    $('#bkDoneAct').innerHTML = ok ? '<button class="btn solid" type="button" data-print="'+b.id+'">Imprimir comanda</button>'
+      : no ? '' : '<a class="btn solid" target="_blank" rel="noopener" href="'+waLink(b)+'">Confirmar por WhatsApp</a>';
+  }
+  function printBooking(b){ if(window.printComanda) printComanda(b, window.studioInfo ? studioInfo(document) : {}); }
+  function cancelBooking(id){
+    var b = findB(id); if(!b || !db) return;
+    if(!confirm('Cancelar este agendamento e liberar o horário?')) return;
+    var batch = db.batch();
+    batch.update(db.doc('bookings/'+id),{status:'cancelado',cancelledAt:Date.now()});
+    batch.delete(db.doc('slots/'+slotKey(b.date,b.t)));
+    batch.commit().then(function(){ toast('Agendamento cancelado'); }).catch(function(){ toast('Não foi possível cancelar'); });
+  }
   var profileOf = function(){ return B.user ? LS.get('ma_prof_'+B.user.email,null) : null; };
 
-  /* disponibilidade de exemplo: horários ocupados gerados por data, mais o que a cliente reservar */
+  /* disponibilidade real: os horários ocupados vêm do Firestore (reservas pendentes ou confirmadas) */
   function slotsFor(d){
     var dow = d.getDay(); if(dow===0 || dow===1) return null;
     var k = keyOf(d), now = new Date();
-    var taken = bookings().filter(function(b){ return b.date===k; }).map(function(b){ return b.t; });
     return (dow===6 ? TIMES_SAT : TIMES_WK).map(function(t){
-      var busy = hash(k+t)%100 < 40 || taken.indexOf(t)>-1;
+      var busy = !!SLOTS[slotKey(k,t)];
       if(k===keyOf(now) && +t.slice(0,2)*60 <= now.getHours()*60+now.getMinutes()+60) busy = true;
       return {t:t, free:!busy};
     });
@@ -915,25 +990,26 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     $('#sumWho').textContent = p ? p.nome+' '+p.sobrenome : '—';
     $('#sumTel').textContent = p ? (p.wa ? 'WhatsApp ' : 'Telefone ')+p.tel : '—';
   }
-  function renderMine(){
-    var k = keyOf(today), mine = bookings().filter(function(b){ return B.user && b.email===B.user.email && b.date>=k; });
+function renderMine(){
+    var k = keyOf(today), mine = MY.filter(function(b){ return b.status!=='cancelado' && b.date>=k; }).sort(function(a,b){ return (a.date+a.t)<(b.date+b.t)?-1:1; });
     $('#mineBox').hidden = !mine.length;
     $('#mineList').innerHTML = mine.map(function(b){
-      var s = SERVICES.filter(function(x){ return x.id===b.svc; })[0];
-      return '<div><span>'+dayLabel(fromKey(b.date))+' · '+b.t+' · '+(s?s.t:'')+'</span><button data-cancel="'+b.date+'|'+b.t+'">Cancelar</button></div>';
+      var ok = b.status==='confirmado';
+      return '<div class="mrow"><span><b>'+dayLabel(fromKey(b.date))+' · '+b.t+'</b><br><small>'+esc(b.svcName)+'</small> <i class="stt'+(ok?' ok':'')+'">'+(ok?'Confirmado':'Aguardando')+'</i></span>'
+        +'<span class="macts">'+(ok?'<button type="button" data-print="'+b.id+'">Imprimir</button>':'<a class="wal" target="_blank" rel="noopener" href="'+waLink(b)+'">Confirmar por WhatsApp</a>')
+        +'<button type="button" data-cancel="'+b.id+'">Cancelar</button></span></div>';
     }).join('');
   }
   function renderBook(){
     var u = B.user, p = profileOf(), stage = !u ? 0 : !p ? 1 : 2;
-    $('#stLogin').hidden = !!u;
+    if(u) startSync(); $('#stLogin').hidden = !!u;
     $('#stProfile').hidden = stage!==1;
     $('#stBook').hidden = stage!==2;
     $('#bkWho').hidden = !u;
     $$('.step').forEach(function(s,i){ s.classList.toggle('on', i===stage); s.classList.toggle('ok', i<stage); });
     if(u){ $('#bkMail').textContent = u.email; $('#bkAv').textContent = u.email.charAt(0).toUpperCase(); }
     if(stage===2){
-      $('#bkDone').hidden = !B.done;
-      if(B.done) $('#bkDoneTxt').textContent = p.nome+', anotamos '+B.done.svc+' para '+B.done.day+' às '+B.done.time+'. Em produção, a confirmação seguiria para o seu '+(p.wa?'WhatsApp':'telefone')+'.';
+      renderDone();
       renderSvc(); renderCal(); renderTimes(); renderMine();
     }
     renderSummary();
@@ -946,7 +1022,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     if(!FIREBASE_CONFIG || !window.firebase) return;
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     fbAuth = firebase.auth();
-    fbAuth.onAuthStateChanged(function(u){ B.user = u ? {email:u.email} : null; if(location.hash==='#agendar') renderBook(); });
+    fbAuth.onAuthStateChanged(function(u){ if(!u) stopSync(); B.user = u ? {email:u.email, uid:u.uid} : null; if(location.hash==='#agendar') renderBook(); });
   }
   function loginAs(email){
     B.user = {email:email}; LS.set('ma_user',B.user);
@@ -967,7 +1043,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   };
   $('#bkOut').onclick = function(){
     if(fbAuth) fbAuth.signOut();
-    B.user = null; B.svc = B.day = B.time = B.done = null; LS.set('ma_user',null); renderBook(); toast('Você saiu da conta');
+    stopSync(); B.user = null; B.svc = B.day = B.time = B.done = null; LS.set('ma_user',null); renderBook(); toast('Você saiu da conta');
   };
 
   /* dados da cliente */
@@ -991,26 +1067,35 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function shiftMonth(n){ var d = new Date(B.y,B.m+n,1); B.y = d.getFullYear(); B.m = d.getMonth(); renderCal(); }
   $('#calPrev').onclick = function(){ shiftMonth(-1); }; $('#calNext').onclick = function(){ shiftMonth(1); };
   $('#bkAgain').onclick = function(){ B.done = null; renderBook(); };
-  $('#mineList').addEventListener('click',function(e){
-    var b = e.target.closest('[data-cancel]'); if(!b) return;
-    var p = b.dataset.cancel.split('|');
-    LS.set('ma_bookings', bookings().filter(function(x){ return !(x.email===B.user.email && x.date===p[0] && x.t===p[1]); }));
-    renderBook(); toast('Agendamento cancelado');
-  });
+function onAct(e){
+    var p = e.target.closest('[data-print]'); if(p){ var b = findB(p.dataset.print); if(b) printBooking(b); return; }
+    var c = e.target.closest('[data-cancel]'); if(c) cancelBooking(c.dataset.cancel);
+  }
+  $('#mineList').addEventListener('click',onAct); $('#bkDoneAct').addEventListener('click',onAct);
+
+  /* reserva de verdade: grava o agendamento (pendente) e bloqueia o horário para todas as clientes */
   $('#bkGo').onclick = function(){
-    var err = $('#bkErr'), p = profileOf();
+    var err = $('#bkErr'), p = profileOf(), btn = $('#bkGo');
     if(!B.user || !p) return err.textContent = 'Entre com o Google e preencha seus dados primeiro.';
     if(!B.svc) return err.textContent = 'Escolha o serviço.';
     if(!B.day) return err.textContent = 'Escolha o dia no calendário.';
     if(!B.time) return err.textContent = 'Escolha o horário.';
-    var all = bookings();
-    if(all.some(function(x){ return x.date===B.day && x.t===B.time; })){ B.time = null; renderTimes(); renderSummary(); return err.textContent = 'Esse horário acabou de ser ocupado. Escolha outro.'; }
-    var s = SERVICES.filter(function(x){ return x.id===B.svc; })[0];
-    all.push({email:B.user.email,date:B.day,t:B.time,svc:B.svc,nome:p.nome,sobrenome:p.sobrenome,tel:p.tel,wa:p.wa});
-    LS.set('ma_bookings',all);
-    B.done = {svc:s.t, day:dayLabel(fromKey(B.day)), time:B.time};
-    B.day = B.time = B.svc = null;
-    renderBook(); toast('Agendamento registrado'); window.scrollTo(0,0);
+    if(!db || !B.user.uid) return err.textContent = 'Não foi possível reservar agora. Entre com sua conta Google e tente de novo.';
+    if(SLOTS[slotKey(B.day,B.time)]){ B.time = null; renderTimes(); renderSummary(); return err.textContent = 'Esse horário acabou de ser ocupado. Escolha outro.'; }
+    var s = SERVICES.filter(function(x){ return x.id===B.svc; })[0], ref = db.collection('bookings').doc();
+    var data = {uid:B.user.uid,email:B.user.email,nome:p.nome,sobrenome:p.sobrenome,tel:p.tel,wa:p.wa,svc:s.id,svcName:s.t,date:B.day,t:B.time,status:'pendente',createdAt:Date.now()};
+    var batch = db.batch();
+    batch.set(db.doc('slots/'+slotKey(B.day,B.time)),{date:B.day,t:B.time,status:'pendente',uid:B.user.uid,bid:ref.id});
+    batch.set(ref,data);
+    btn.disabled = true; err.textContent = '';
+    batch.commit().then(function(){
+      data.id = ref.id; lastStatus[ref.id] = 'pendente'; B.done = {id:ref.id, data:data}; B.day = B.time = B.svc = null;
+      btn.disabled = false; renderBook(); toast('Horário reservado. Agora confirme pelo WhatsApp'); window.scrollTo(0,0);
+    }).catch(function(e){
+      btn.disabled = false;
+      if(e && e.code==='permission-denied'){ B.time = null; renderTimes(); renderSummary(); err.textContent = 'Esse horário acabou de ser ocupado. Escolha outro.'; }
+      else err.textContent = 'Não foi possível reservar: '+((e && e.message) || e);
+    });
   };
 
   /* entradas do site para a subpágina */
@@ -1110,7 +1195,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
       var e = ed[el.getAttribute('data-eid')]; if(!e) return;
       if(e.o != null && el.getAttribute('data-o') !== e.o) return;
       if(e.h != null){ keep(el,'h'); el.innerHTML = san(e.h); }
-      if(e.src != null){ keep(el,'src'); keep(el,'srcset'); el.removeAttribute('srcset'); el.setAttribute('src',e.src); }
+      if(e.src != null){ keep(el,'src'); keep(el,'srcset'); if(/^fb:/.test(e.src)){ (function(el,id){ getImg(id).then(function(d){ if(d){ el.removeAttribute('srcset'); el.setAttribute('src',d); } }); })(el,e.src.slice(3)); } else { el.removeAttribute('srcset'); el.setAttribute('src',e.src); } }
       if(e.href != null){ keep(el,'href'); el.setAttribute('href',e.href); }
       if(e.css){ keep(el,'style'); Object.keys(e.css).forEach(function(p){ el.style.setProperty(p,e.css[p]); }); }
       if(e.hide){ keep(el,'style'); if(ADMIN) el.style.opacity = '.3'; else el.style.display = 'none'; }
@@ -1133,7 +1218,21 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     if(hrs.length || d.phone) put('#gHrsF', hrs.map(function(h){ return esc(h[0]+': '+h[1]); }).join('<br>') + (d.phone ? '<br>'+esc(d.phone) : ''));
     if(d.reviews && d.reviews.length) renderQuotes(d.reviews.map(function(x){ return {n:x.n, t:x.t, s:x.s, photo:x.photo, r:'Avaliação no Google'+(x.when?' · '+x.when:'')}; }), true);
   }
+/* imagens salvas no Firestore (coleção imgs, base64). O id é único por envio, então o cache local nunca fica velho. */
+  var imgP = {};
+  function getImg(id){
+    if(imgP[id]) return imgP[id];
+    var ck = 'ma_img_'+id, v = null; try{ v = localStorage.getItem(ck); }catch(e){}
+    if(v) return (imgP[id] = Promise.resolve(v));
+    if(!db) return Promise.resolve('');
+    return (imgP[id] = db.doc('imgs/'+id).get().then(function(s){
+      var d = s.exists ? s.data().d : '';
+      if(d){ try{ localStorage.setItem(ck,d); }catch(e){ try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('ma_img_')===0) localStorage.removeItem(k); }); localStorage.setItem(ck,d); }catch(e2){} } }
+      return d || '';
+    }).catch(function(){ delete imgP[id]; return ''; }));
+  }
   function run(){
+    window.__siteCfg = content || {};
     restore();
     if(content) applyContent(content);
     if(!ADMIN && gdata && gdata.enabled && gdata.data) applyG(gdata.data);

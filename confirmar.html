@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Confirmar agendamento · Marta Andreolli</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--b:#8f5f3a;--bl:#b88555;--bg:#faf7f3;--ink:#16120f;--line:#e6ddd2;--mut:#776d63;--grad:linear-gradient(135deg,#b88555 0%,#8f5f3a 55%,#5c3a22 100%)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font:15px/1.55 Manrope,system-ui,sans-serif;color:var(--ink);background:linear-gradient(160deg,#f8f2ea,#fff 60%)}
+.card{width:min(100%,520px);background:#fff;border:1px solid var(--line);border-radius:28px;padding:36px 30px;text-align:center;box-shadow:0 40px 80px -50px rgba(22,18,15,.5)}
+.mono{width:46px;height:46px;margin:0 auto 6px;border-radius:50% 50% 50% 8px;background:var(--grad);color:#fff;display:grid;place-items:center;font:500 1.6rem "Cormorant Garamond",Georgia,serif}
+.brand{font-size:.74rem;letter-spacing:.3em;text-transform:uppercase;font-weight:700;color:var(--mut)}
+.seal{width:76px;height:76px;margin:22px auto 6px;border-radius:50%;background:var(--grad);display:grid;place-items:center;animation:pop .6s cubic-bezier(.22,.8,.24,1)}
+.seal svg{width:34px;height:34px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.seal.warn{background:#c9a24f}.seal.bad{background:#b3261e}
+@keyframes pop{from{transform:scale(.3);opacity:0}}
+h1{font:italic 500 2.5rem/1.05 "Cormorant Garamond",Georgia,serif;margin:12px 0 6px}
+p{margin:0;color:var(--mut)}
+.sum{display:grid;gap:0;margin:22px 0 6px;text-align:left}
+.sum div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:.92rem}
+.sum span{color:var(--mut)}.sum b{text-align:right;font-weight:600}
+.acts{display:flex;flex-direction:column;gap:10px;margin-top:22px}
+button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padding:14px 22px;border:1.5px solid #e3d3c0;background:#fff;color:var(--ink);text-decoration:none;display:block}
+.pri{background:var(--grad);color:#fff;border:0}
+.lnk{border:0;background:none;color:#a3392b;font-size:.84rem;padding:8px}
+.hint{font-size:.82rem;color:var(--mut);margin-top:16px}
+.stt{display:inline-block;margin-top:4px;padding:4px 12px;border-radius:999px;font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#e3f1e6;color:#2e6b43}
+[hidden]{display:none!important}
+</style>
+<script src="painel/firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="painel/comanda.js"></script>
+</head>
+<body>
+<div class="card">
+  <div class="mono">M</div><div class="brand">Marta Andreolli</div>
+
+  <div id="v-load"><h1>Um instante…</h1><p>Verificando o agendamento.</p></div>
+
+  <div id="v-login" hidden>
+    <h1>Entre para confirmar</h1>
+    <p>Para confirmar este agendamento, entre com a conta Google do studio.</p>
+    <div class="acts"><button class="pri" id="go">Entrar com Google</button></div>
+  </div>
+
+  <div id="v-msg" hidden>
+    <div class="seal bad" id="msgSeal"><svg viewBox="0 0 16 16"><path d="M3 3l10 10M13 3L3 13"/></svg></div>
+    <h1 id="msgH"></h1><p id="msgP"></p>
+    <div class="acts"><button id="msgOut" hidden>Trocar de conta</button></div>
+  </div>
+
+  <div id="v-ok" hidden>
+    <div class="seal" id="okSeal"><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3.2L13 4.5"/></svg></div>
+    <h1 id="okH">Agendamento confirmado</h1>
+    <span class="stt" id="okStt">Confirmado agora</span>
+    <div class="sum" id="okSum"></div>
+    <div class="acts">
+      <button class="pri" id="bPrint">Imprimir comanda</button>
+      <a class="btn" id="bWa" target="_blank" rel="noopener">Avisar a cliente no WhatsApp</a>
+      <button class="lnk" id="bCx">Cancelar este agendamento</button>
+    </div>
+    <p class="hint">A cliente também vê “Agendamento confirmado” no site, com o botão de imprimir.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var DAYN = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+  var MONN = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  var fmtD = function (k) { var p = k.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]); return DAYN[d.getDay()] + ', ' + d.getDate() + ' de ' + MONN[d.getMonth()]; };
+  var ID = new URLSearchParams(location.search).get('b');
+  var views = ['load', 'login', 'msg', 'ok'];
+  var show = function (v) { views.forEach(function (n) { $('#v-' + n).hidden = n !== v; }); };
+  var msg = function (h, p, kind, out) { $('#msgH').textContent = h; $('#msgP').textContent = p; $('#msgSeal').className = 'seal ' + (kind || 'bad'); $('#msgOut').hidden = !out; show('msg'); };
+
+  if (!ID) return msg('Link inválido', 'Este link de confirmação está incompleto. Peça à cliente para enviar novamente.');
+  if (!window.firebase || !window.FB_CFG) return msg('Sem conexão', 'Não foi possível carregar o Firebase. Verifique a internet e tente de novo.');
+  firebase.initializeApp(window.FB_CFG);
+  var auth = firebase.auth(), db = firebase.firestore(), OWNER = (window.OWNER_EMAIL || '').toLowerCase(), me = '', B = null;
+
+  $('#go').onclick = function () { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (e) { alert(e.message); }); };
+  $('#msgOut').onclick = function () { auth.signOut(); };
+
+  async function isAdmin(u) {
+    var em = (u.email || '').toLowerCase();
+    if (em === OWNER && u.emailVerified) return true;
+    try { return (await db.doc('admins/' + em).get()).exists; } catch (e) { return false; }
+  }
+  function render(b, note) {
+    B = b; show('ok');
+    var ok = b.status === 'confirmado';
+    $('#okSum').innerHTML = [['Cliente', b.nome + ' ' + b.sobrenome], ['Serviço', b.svcName], ['Dia', fmtD(b.date)], ['Horário', b.t], ['Contato', (b.wa ? 'WhatsApp ' : 'Telefone ') + b.tel]]
+      .map(function (r) { return '<div><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
+    $('#okStt').textContent = note;
+    $('#bCx').hidden = !ok;
+    var wa = $('#bWa');
+    if (b.wa) {
+      var n = String(b.tel).replace(/\D/g, ''); if (n.length <= 11) n = '55' + n;
+      var site = new URL('index.html#agendar', location.href).href;
+      var t = 'Olá, ' + b.nome + '! Seu agendamento está confirmado ✅\n\n💇 ' + b.svcName + '\n📅 ' + fmtD(b.date) + '\n⏰ ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + site + '\n\nTe esperamos! – Marta Andreolli';
+      wa.href = 'https://wa.me/' + n + '?text=' + encodeURIComponent(t); wa.hidden = false;
+    } else wa.hidden = true;
+  }
+  $('#bPrint').onclick = function () { if (B) printComanda(B, studioInfo(document)); };
+  $('#bCx').onclick = async function () {
+    if (!B || !confirm('Cancelar o agendamento de ' + B.nome + ' e liberar o horário?')) return;
+    try {
+      var batch = db.batch();
+      batch.update(db.doc('bookings/' + B.id), { status: 'cancelado', cancelledAt: Date.now(), cancelledBy: me });
+      batch.delete(db.doc('slots/' + B.date + '_' + B.t.replace(':', '')));
+      await batch.commit();
+      msg('Agendamento cancelado', 'O horário foi liberado na agenda.', 'warn');
+    } catch (e) { alert('Erro: ' + e.message); }
+  };
+
+  auth.onAuthStateChanged(async function (u) {
+    if (!u) return show('login');
+    show('load'); me = (u.email || '').toLowerCase();
+    if (!(await isAdmin(u))) return msg('Sem permissão', 'A conta ' + me + ' não é do studio. Entre com a conta que tem acesso ao painel.', 'bad', true);
+    try {
+      var ref = db.doc('bookings/' + ID), s = await ref.get();
+      if (!s.exists) return msg('Agendamento não encontrado', 'Esse agendamento não existe mais ou o link está errado.');
+      var b = Object.assign({ id: s.id }, s.data());
+      if (b.status === 'cancelado') return msg('Agendamento cancelado', b.nome + ' cancelou este horário (' + fmtD(b.date) + ', ' + b.t + ').', 'warn');
+      if (b.status === 'confirmado') return render(b, 'Já estava confirmado');
+      var batch = db.batch();
+      batch.update(ref, { status: 'confirmado', confirmedAt: Date.now(), confirmedBy: me });
+      batch.set(db.doc('slots/' + b.date + '_' + b.t.replace(':', '')), { date: b.date, t: b.t, status: 'confirmado', uid: b.uid, bid: b.id });
+      await batch.commit();
+      b.status = 'confirmado'; render(b, 'Confirmado agora');
+    } catch (e) { msg('Não foi possível confirmar', e.message); }
+  });
+})();
+</script>
+</body>
+</html>
