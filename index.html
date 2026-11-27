@@ -15,6 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="painel/google-sync.js"></script>
+<script src="painel/ui.js"></script>
 <script src="painel/comanda.js"></script>
 </head><body>
 <title>Marta Andreolli</title>
@@ -934,11 +935,13 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function printBooking(b){ if(window.printComanda) printComanda(b, window.studioInfo ? studioInfo(document) : {}); }
   function cancelBooking(id){
     var b = findB(id); if(!b || !db) return;
-    if(!confirm('Cancelar este agendamento e liberar o horário?')) return;
-    var batch = db.batch();
-    batch.update(db.doc('bookings/'+id),{status:'cancelado',cancelledAt:Date.now()});
-    batch.delete(db.doc('slots/'+slotKey(b.date,b.t)));
-    batch.commit().then(function(){ toast('Agendamento cancelado'); }).catch(function(){ toast('Não foi possível cancelar'); });
+    UI.confirm('O horário será liberado e outra pessoa poderá reservá-lo.',{title:'Cancelar agendamento?',ok:'Cancelar agendamento',cancel:'Manter',danger:true}).then(function(yes){
+      if(!yes) return;
+      var batch = db.batch();
+      batch.update(db.doc('bookings/'+id),{status:'cancelado',cancelledAt:Date.now()});
+      batch.delete(db.doc('slots/'+slotKey(b.date,b.t)));
+      batch.commit().then(function(){ toast('Agendamento cancelado'); }).catch(function(){ toast('Não foi possível cancelar'); });
+    });
   }
   var profileOf = function(){ return B.user ? LS.get('ma_prof_'+B.user.email,null) : null; };
 
@@ -1273,7 +1276,7 @@ function onAct(e){
   var $ = function(s){return document.querySelector(s)};
   var btn = $('#hLogin'); if(!btn) return;
   if(/[?&]admin=1/.test(location.search)){ $('.hact').style.display='none'; return; }
-  if(!window.firebase || !window.FB_CFG){ btn.onclick = function(){ alert('Login indisponível no momento.'); }; return; }
+  if(!window.firebase || !window.FB_CFG){ btn.onclick = function(){ UI.alert('Tente novamente em alguns instantes.',{kind:'warn',title:'Login indisponível'}); }; return; }
   if(!firebase.apps.length) firebase.initializeApp(window.FB_CFG);
   var auth = firebase.auth(), db = firebase.firestore(), OWNER = (window.OWNER_EMAIL||'').toLowerCase(), fromClick = false;
   function isAdmin(u){
@@ -1286,7 +1289,7 @@ function onAct(e){
     auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function(e){
       fromClick = false;
       if(e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
-      alert(e.code === 'auth/unauthorized-domain' ? 'Adicione o domínio '+location.hostname+' em Firebase → Authentication → Configurações → Domínios autorizados.' : 'Não foi possível entrar: '+e.message);
+      UI.alert(e.code === 'auth/unauthorized-domain' ? 'Adicione o domínio '+location.hostname+' em Firebase → Authentication → Configurações → Domínios autorizados.' : e.message,{kind:'error',title:'Não foi possível entrar'});
     });
   };
   var av = $('#hAv'), menu = $('#hMenu');

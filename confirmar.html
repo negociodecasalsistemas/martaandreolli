@@ -34,6 +34,7 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="painel/ui.js"></script>
 <script src="painel/comanda.js"></script>
 </head>
 <body>
@@ -78,7 +79,7 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   var ID = new URLSearchParams(location.search).get('b');
   var views = ['load', 'login', 'msg', 'ok'];
   var show = function (v) { views.forEach(function (n) { $('#v-' + n).hidden = n !== v; }); };
-  var clean = function () { try { history.replaceState(null, '', '/'); } catch (e) {} };
+  var clean = function () {};
   var msg = function (h, p, kind, out) { clean(); $('#msgH').textContent = h; $('#msgP').textContent = p; $('#msgSeal').className = 'seal ' + (kind || 'bad'); $('#msgOut').hidden = !out; show('msg'); };
 
   if (!ID) return msg('Link inválido', 'Este link de confirmação está incompleto. Peça à cliente para enviar novamente.');
@@ -86,7 +87,7 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   firebase.initializeApp(window.FB_CFG);
   var auth = firebase.auth(), db = firebase.firestore(), OWNER = (window.OWNER_EMAIL || '').toLowerCase(), me = '', B = null;
 
-  $('#go').onclick = function () { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (e) { alert(e.message); }); };
+  $('#go').onclick = function () { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function (e) { UI.alert(e.message, { kind: 'error', title: 'Não foi possível entrar' }); }); };
   $('#msgOut').onclick = function () { auth.signOut(); };
 
   async function isAdmin(u) {
@@ -111,14 +112,14 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   }
   $('#bPrint').onclick = function () { if (B) printComanda(B, studioInfo(document)); };
   $('#bCx').onclick = async function () {
-    if (!B || !confirm('Cancelar o agendamento de ' + B.nome + ' e liberar o horário?')) return;
+    if (!B || !(await UI.confirm('O horário de ' + B.nome + ' será liberado na agenda.', { title: 'Cancelar agendamento?', ok: 'Cancelar agendamento', cancel: 'Manter', danger: true }))) return;
     try {
       var batch = db.batch();
       batch.update(db.doc('bookings/' + B.id), { status: 'cancelado', cancelledAt: Date.now(), cancelledBy: me });
       batch.delete(db.doc('slots/' + B.date + '_' + B.t.replace(':', '')));
       await batch.commit();
       msg('Agendamento cancelado', 'O horário foi liberado na agenda.', 'warn');
-    } catch (e) { alert('Erro: ' + e.message); }
+    } catch (e) { UI.alert(e.message, { kind: 'error' }); }
   };
 
   auth.onAuthStateChanged(async function (u) {
