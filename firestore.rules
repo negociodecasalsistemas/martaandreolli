@@ -55,11 +55,12 @@ service cloud.firestore {
     // agendamentos (dados da cliente): só a própria cliente e os administradores
     match /bookings/{id} {
       allow read: if signed() && (isAdmin() || resource.data.uid == request.auth.uid);
-      allow create: if signed()
+      allow create: if isAdmin() || (signed()
         && request.resource.data.keys().hasOnly(['uid','email','nome','sobrenome','tel','wa','svc','svcName','date','t','status','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.status == 'pendente';
+        && request.resource.data.status == 'pendente');
+      // administradores também criam agendamentos manuais (aba Marcar do painel)
       // só administradores confirmam; a cliente só pode cancelar o próprio agendamento
       allow update: if isAdmin() || (signed()
         && resource.data.uid == request.auth.uid

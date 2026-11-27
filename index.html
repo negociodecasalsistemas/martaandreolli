@@ -683,7 +683,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
           </div>
           <p class="err" id="bkErr" role="alert"></p>
           <button class="btn solid submit" id="bkGo">Reservar horário</button>
-          <p style="font-size:.78rem;color:var(--muted);margin:14px 0 0">Ter a sáb, 8h às 18h30. Domingo e segunda: fechado.</p>
+          <p style="font-size:.78rem;color:var(--muted);margin:14px 0 0">Os horários mostrados estão livres. A reserva só vale depois da confirmação do studio.</p>
         </aside>
       </div>
     </div>
@@ -888,8 +888,13 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   };
   var DAYN = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
   var MONN = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  var TIMES_WK = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
-  var TIMES_SAT = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
+  /* horários padrão; a dona muda no painel (aba Horários). Todos os dias a partir de hoje ficam abertos. */
+  var TIMES_DEF = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
+  function timesFor(k){
+    var h = (window.__siteCfg || {}).hours || {}, d = h.days || {};
+    if(Array.isArray(d[k])) return d[k];
+    return Array.isArray(h.def) ? h.def : TIMES_DEF;
+  }
   var today = new Date(); today.setHours(0,0,0,0);
   var B = {user:LS.get('ma_user',null), svc:null, day:null, time:null, y:today.getFullYear(), m:today.getMonth(), done:null};
 
@@ -975,11 +980,11 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
 
   /* disponibilidade real: os horários ocupados vêm do Firestore (reservas pendentes ou confirmadas) */
   function slotsFor(d){
-    var dow = d.getDay(); if(dow===0 || dow===1) return null;
-    var k = keyOf(d), now = new Date();
-    return (dow===6 ? TIMES_SAT : TIMES_WK).map(function(t){
+    var k = keyOf(d), now = new Date(), list = timesFor(k);
+    if(!list.length) return null;
+    return list.map(function(t){
       var busy = !!SLOTS[slotKey(k,t)];
-      if(k===keyOf(now) && +t.slice(0,2)*60 <= now.getHours()*60+now.getMinutes()+60) busy = true;
+      if(k===keyOf(now) && +t.slice(0,2)*60 + +t.slice(3,5) <= now.getHours()*60+now.getMinutes()+60) busy = true;
       return {t:t, free:!busy};
     });
   }
@@ -1153,6 +1158,7 @@ function onAct(e){
   }
   window.addEventListener('hashchange',route);
   initFirebase(); route();
+  window.__bookRefresh = function(){ if(isBook()) renderBook(); };
 
   /* cabeçalho e brilho do mouse */
   var head = $('#head');
@@ -1341,6 +1347,7 @@ function onAct(e){
     renderSocials(content && content.socials);
     if(!ADMIN && gdata && gdata.enabled && gdata.data) applyG(gdata.data);
     else renderQuotes(content && content.quotes && content.quotes.length ? content.quotes : builtin);
+    if(window.__bookRefresh) window.__bookRefresh();
   }
   function done(){ if(ready) return; ready = true; window.__cms = {builtin:builtin, renderQuotes:renderQuotes, san:san, getImg:getImg, applyLists:applyLists, renderSocials:renderSocials, SOC:SOC}; window.__cmsReady = true; }
 
