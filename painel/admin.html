@@ -18,7 +18,7 @@ button:hover{border-color:var(--bl)}
 .bar{display:flex;align-items:center;gap:10px;padding:0 14px;background:#fff;border-bottom:1px solid var(--line)}
 .bar select{width:auto}.sp{flex:1}
 .main{display:grid;grid-template-columns:1fr 400px;min-height:0}
-.stage{background:#e9e3da;display:flex;justify-content:center;overflow:hidden}
+.stage{background:#e9e3da;display:flex;overflow:hidden;min-width:0}
 iframe{border:0;background:#fff;width:100%;height:100%}
 aside{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .tabs{display:flex;border-bottom:1px solid var(--line)}
@@ -254,7 +254,16 @@ function renderInsp() {
 function tab(t) { $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); }
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 $('#goto').onchange = e => { if (W) W.location.hash = e.target.value; };
-$('#vw').onclick = () => { const m = ifr.style.width !== '390px'; ifr.style.width = m ? '390px' : ''; $('#vw').textContent = m ? '🖥 Computador' : '📱 Celular'; };
+/* Computador: o site é desenhado em 1280px reais e reduzido para caber (fica igual ao que se vê no PC). Celular: 390px. */
+let mobile = false;
+function fitStage() {
+  const st = $('.stage'), w = st.clientWidth, h = st.clientHeight;
+  if (mobile) { ifr.style.cssText = 'width:390px;height:' + h + 'px;transform:none;flex:none;margin:0 auto'; return; }
+  const DW = 1280, k = Math.min(1, w / DW);
+  ifr.style.cssText = 'width:' + DW + 'px;height:' + (h / k) + 'px;transform:scale(' + k + ');transform-origin:top left;flex:none;margin:0 auto';
+}
+$('#vw').onclick = () => { mobile = !mobile; $('#vw').textContent = mobile ? '🖥 Computador' : '📱 Celular'; fitStage(); };
+window.addEventListener('resize', fitStage); fitStage();
 
 /* ---------- avaliações (modo manual: usado quando a API do Google está desligada) ---------- */
 function renderRev() {
