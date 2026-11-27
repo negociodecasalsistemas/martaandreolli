@@ -21,11 +21,16 @@ button:hover{border-color:var(--bl)}
 .stage{background:#e9e3da;display:flex;overflow:hidden;min-width:0}
 iframe{border:0;background:#fff;width:100%;height:100%}
 aside{background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px;border-bottom:1px solid var(--line)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;border-bottom:1px solid var(--line)}
 .tabs button{display:flex;flex-direction:column;align-items:center;gap:4px;border:0;border-radius:10px;background:none;padding:8px 2px;font-size:11px;line-height:1.1;color:var(--mut)}
 .tabs button:hover{background:#faf6f0;border:0}
 .tabs .on{background:#f6efe6;color:var(--b);font-weight:600}
 .tabs .ic{margin:0;width:19px;height:19px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border:1px solid var(--line);border-radius:999px;background:#faf6f0;font-size:13px;font-weight:600;color:var(--ink)}
+.chip button{border:0;background:none;padding:0 0 0 4px;color:var(--mut);font-size:16px;line-height:1}
+.chip.pk{cursor:pointer}.chip.pk.on{background:linear-gradient(135deg,#b88555,#8f5f3a);color:#fff;border-color:transparent}
+.chip.tk{background:#f8e5e1;color:#a3392b;border-color:#f0cfc9;font-weight:500}
 .pane{display:none;padding:14px;overflow:auto;flex:1}.pane.on{display:block}
 label{display:block;font-size:12px;color:var(--mut);margin:10px 0 4px}
 input,select,textarea{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
@@ -100,7 +105,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
       <div class="tabs" id="tabs"></div>
       <div class="pane on" id="p-edit"></div>
       <div class="pane" id="p-cards"></div>
+      <div class="pane" id="p-hor"></div>
       <div class="pane" id="p-agenda"></div>
+      <div class="pane" id="p-marcar"></div>
       <div class="pane" id="p-rev"></div>
       <div class="pane" id="p-g"></div>
       <div class="pane" id="p-redes"></div>
@@ -117,9 +124,9 @@ firebase.initializeApp(FB_CFG);
 /* URL limpa (só o domínio). O caminho fica guardado na aba para o recarregar voltar para cá (ver index.html) */
 try { sessionStorage.setItem('ma_return', location.pathname + location.search); history.replaceState(null, '', '/'); } catch (e) {}
 /* ícones e memória da tela (aba e modo de visualização sobrevivem ao recarregar) */
-const P = { pen: '<path d="M4 20l1-4.2L16.6 4.2a2 2 0 012.8 0l.4.4a2 2 0 010 2.8L8.2 19z"/><path d="M14.5 6.3l3.2 3.2"/>', grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>', cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.6"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', star: '<path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.8 1-5.9L3.5 9.8l5.9-.8z"/>', share: '<circle cx="6" cy="12" r="2.6"/><circle cx="17.5" cy="6" r="2.6"/><circle cx="17.5" cy="18" r="2.6"/><path d="M8.3 10.8l7-3.6M8.3 13.2l7 3.6"/>', palette: '<path d="M12 3.5a8.5 8.5 0 100 17c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.6-1.2-2.8 0-1 .8-1.6 1.9-1.6H17a3.5 3.5 0 003.5-3.6C20.5 6.7 16.8 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.8" r="1"/>', pin: '<path d="M12 21s-6.5-5.8-6.5-11a6.5 6.5 0 0113 0c0 5.2-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>', key: '<circle cx="8" cy="15" r="3.8"/><path d="M10.7 12.3L19.5 3.5M16 7l2.5 2.5M13.5 9.5l2 2"/>', desk: '<rect x="3" y="4" width="18" height="12" rx="2.2"/><path d="M8.5 20h7M12 16v4"/>', phone: '<rect x="7" y="2.8" width="10" height="18.4" rx="2.6"/><path d="M10.6 18h2.8"/>', copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.4"/><path d="M15.5 8.5V6.4A2.4 2.4 0 0013.1 4H6.4A2.4 2.4 0 004 6.4v6.7A2.4 2.4 0 006.4 15.5h2.1"/>', eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>', eyeoff: '<path d="M3.5 3.5l17 17M10.2 5.7A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3 3.8M6.4 7.4A16 16 0 002.5 12S6 18.5 12 18.5a9.4 9.4 0 003.7-.8"/><path d="M9.9 10A2.8 2.8 0 0014 14"/>', undo: '<path d="M4.5 9.5h9a5.5 5.5 0 010 11H9"/><path d="M8.5 5.5l-4 4 4 4"/>', check: '<path d="M4.5 12.5l5 5L19.5 7"/>', print: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2.2"/><path d="M7 14h10v6.5H7z"/>', chat: '<path d="M20.5 11.8a7.9 7.9 0 01-11.6 7L4 20.2l1.4-4.6A7.9 7.9 0 1120.5 11.8z"/>', link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3A4 4 0 0011 18.7l1-1"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', trash: '<path d="M4.5 7h15M10 7V4.8h4V7M6.6 7l.8 12.2h9.2L17.4 7M10.2 11v5M13.8 11v5"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', plus: '<path d="M12 5v14M5 12h14"/>', out: '<path d="M14 4.5h4.1A1.9 1.9 0 0120 6.4v11.2a1.9 1.9 0 01-1.9 1.9H14"/><path d="M10 8l-4 4 4 4M6 12h9.5"/>', ext: '<path d="M14 4.5h5.5V10M19.5 4.5L11 13"/><path d="M17.5 14v3.6a1.9 1.9 0 01-1.9 1.9H6.4a1.9 1.9 0 01-1.9-1.9V8.4a1.9 1.9 0 011.9-1.9H10"/>' };
+const P = { clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', userplus: '<circle cx="10" cy="8.5" r="3.5"/><path d="M3.5 20c.5-3.6 3-5.5 6.5-5.5M17 14v6M14 17h6"/>', pen: '<path d="M4 20l1-4.2L16.6 4.2a2 2 0 012.8 0l.4.4a2 2 0 010 2.8L8.2 19z"/><path d="M14.5 6.3l3.2 3.2"/>', grid: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6"/>', cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.6"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', star: '<path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.8 1-5.9L3.5 9.8l5.9-.8z"/>', share: '<circle cx="6" cy="12" r="2.6"/><circle cx="17.5" cy="6" r="2.6"/><circle cx="17.5" cy="18" r="2.6"/><path d="M8.3 10.8l7-3.6M8.3 13.2l7 3.6"/>', palette: '<path d="M12 3.5a8.5 8.5 0 100 17c1.4 0 2-.9 2-1.8 0-1.4-1.2-1.6-1.2-2.8 0-1 .8-1.6 1.9-1.6H17a3.5 3.5 0 003.5-3.6C20.5 6.7 16.8 3.5 12 3.5z"/><circle cx="7.8" cy="11" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.8" r="1"/>', pin: '<path d="M12 21s-6.5-5.8-6.5-11a6.5 6.5 0 0113 0c0 5.2-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>', key: '<circle cx="8" cy="15" r="3.8"/><path d="M10.7 12.3L19.5 3.5M16 7l2.5 2.5M13.5 9.5l2 2"/>', desk: '<rect x="3" y="4" width="18" height="12" rx="2.2"/><path d="M8.5 20h7M12 16v4"/>', phone: '<rect x="7" y="2.8" width="10" height="18.4" rx="2.6"/><path d="M10.6 18h2.8"/>', copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.4"/><path d="M15.5 8.5V6.4A2.4 2.4 0 0013.1 4H6.4A2.4 2.4 0 004 6.4v6.7A2.4 2.4 0 006.4 15.5h2.1"/>', eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>', eyeoff: '<path d="M3.5 3.5l17 17M10.2 5.7A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3 3.8M6.4 7.4A16 16 0 002.5 12S6 18.5 12 18.5a9.4 9.4 0 003.7-.8"/><path d="M9.9 10A2.8 2.8 0 0014 14"/>', undo: '<path d="M4.5 9.5h9a5.5 5.5 0 010 11H9"/><path d="M8.5 5.5l-4 4 4 4"/>', check: '<path d="M4.5 12.5l5 5L19.5 7"/>', print: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2.2"/><path d="M7 14h10v6.5H7z"/>', chat: '<path d="M20.5 11.8a7.9 7.9 0 01-11.6 7L4 20.2l1.4-4.6A7.9 7.9 0 1120.5 11.8z"/>', link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3A4 4 0 0011 18.7l1-1"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', trash: '<path d="M4.5 7h15M10 7V4.8h4V7M6.6 7l.8 12.2h9.2L17.4 7M10.2 11v5M13.8 11v5"/>', up: '<path d="M6 14l6-6 6 6"/>', down: '<path d="M6 10l6 6 6-6"/>', plus: '<path d="M12 5v14M5 12h14"/>', out: '<path d="M14 4.5h4.1A1.9 1.9 0 0120 6.4v11.2a1.9 1.9 0 01-1.9 1.9H14"/><path d="M10 8l-4 4 4 4M6 12h9.5"/>', ext: '<path d="M14 4.5h5.5V10M19.5 4.5L11 13"/><path d="M17.5 14v3.6a1.9 1.9 0 01-1.9 1.9H6.4a1.9 1.9 0 01-1.9-1.9V8.4a1.9 1.9 0 011.9-1.9H10"/>' };
 const I = n => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>';
-const TABS = [['edit', 'pen', 'Editar'], ['cards', 'grid', 'Cards'], ['agenda', 'cal', 'Agenda'], ['rev', 'star', 'Avaliações'], ['redes', 'share', 'Redes'], ['cores', 'palette', 'Cores'], ['g', 'pin', 'Google'], ['acc', 'key', 'Acessos']];
+const TABS = [['edit', 'pen', 'Editar'], ['cards', 'grid', 'Cards'], ['hor', 'clock', 'Horários'], ['agenda', 'cal', 'Agenda'], ['marcar', 'userplus', 'Marcar'], ['rev', 'star', 'Avaliações'], ['redes', 'share', 'Redes'], ['cores', 'palette', 'Cores'], ['g', 'pin', 'Google'], ['acc', 'key', 'Acessos']];
 $('#tabs').innerHTML = TABS.map(t => `<button data-t="${t[0]}" class="${t[0] === 'edit' ? 'on' : ''}">${I(t[1])}<span id="t-${t[0]}">${t[2]}</span></button>`).join('');
 const mem = { get: (k, d) => { try { const v = localStorage.getItem('pn_' + k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('pn_' + k, v); } catch (e) {} } };
 const auth = firebase.auth(), db = firebase.firestore();
@@ -295,7 +302,7 @@ function renderInsp() {
 }
 
 /* ---------- abas ---------- */
-function tab(t) { mem.set('tab', t); $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); if (t === 'cards') renderCards(); }
+function tab(t) { mem.set('tab', t); $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); if (t === 'hor') renderHours(); if (t === 'marcar') renderMarcar(); if (t === 'cards') renderCards(); }
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 $('#goto').onchange = e => {
   if (!W) return; const v = e.target.value;
@@ -538,6 +545,7 @@ document.addEventListener('input', e => {
 /* ---------- agenda: agendamentos das clientes (tempo real) ---------- */
 let BK = [], agFilter = 'pend', agUnsub = null, agErr = '';
 const pad2 = n => String(n).padStart(2, '0');
+const todayKey = () => { const t = new Date(); return t.getFullYear() + '-' + pad2(t.getMonth() + 1) + '-' + pad2(t.getDate()); };
 const DN = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], MN = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const fmtD = k => { const [y, m, d] = k.split('-').map(Number), dt = new Date(y, m - 1, d); return DN[dt.getDay()] + ', ' + d + ' de ' + MN[m - 1]; };
 const slotId = b => b.date + '_' + b.t.replace(':', '');
@@ -549,7 +557,7 @@ function watchAgenda() {
     agErr = ''; BK = s.docs.map(d => ({ id: d.id, ...d.data() }));
     const n = BK.filter(b => b.status === 'pendente').length;
     $('#t-agenda').textContent = n ? 'Agenda (' + n + ')' : 'Agenda';
-    drawAgenda();
+    drawAgenda(); drawMarcar();
   }, e => { agErr = /permission/i.test(e.message) ? 'Sem permissão para ler os agendamentos. Publique o arquivo firestore.rules novo em Firebase → Firestore Database → Regras (botão Publicar) e recarregue esta página.' : e.message; drawAgenda(); });
 }
 function renderAgenda() {
@@ -572,8 +580,8 @@ function drawAgenda() {
     const st = b.status === 'confirmado' ? ['ok', 'Confirmado'] : b.status === 'cancelado' ? ['no', 'Cancelado'] : ['', 'Aguardando'];
     return `<div class="card" data-b="${esc(b.id)}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(fmtD(b.date))} · ${esc(b.t)}</b><span class="stt ${st[0]}">${st[1]}</span></div>
       <div style="margin-top:4px">${esc(b.nome + ' ' + b.sobrenome)} · ${esc(b.svcName)}</div>
-      <div class="hint">${esc(b.wa ? 'WhatsApp ' : 'Telefone ')}${esc(b.tel)} · ${esc(b.email)}</div>
-      <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">' + I('check') + 'Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">' + I('print') + 'Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">' + I('chat') + 'Cliente</button>' : ''}<button data-a="copy">${I('link')}Link</button>${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">' + I('x') + 'Cancelar</button>' : ''}</div></div>`;
+      <div class="hint">${esc(b.wa ? 'WhatsApp ' : 'Telefone ')}${esc(b.tel)} · ${b.manual ? 'marcado por você' : esc(b.email)}</div>
+      <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">' + I('check') + 'Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">' + I('print') + 'Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">' + I('chat') + 'Cliente</button>' : ''}${b.manual ? '' : `<button data-a="copy">${I('link')}Link</button>`}${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">' + I('x') + 'Cancelar</button>' : ''}</div></div>`;
   }).join('') || '<p class="hint">Nenhum agendamento aqui.</p>';
 }
 async function setBooking(b, status) {
@@ -616,6 +624,135 @@ function bindDiag(p) {
     await t('ler acessos (admins)', () => db.collection('admins').get());
     out.push('\nSe aparecer ✗ em bookings, slots ou imgs, o firestore.rules novo ainda não foi publicado neste projeto.'); o.textContent = out.join('\n');
   };
+}
+
+/* ---------- horários: o que a cliente pode escolher no site ---------- */
+const T_DEF = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+const hrs = () => { const h = state.hours = state.hours || {}; if (!Array.isArray(h.def)) h.def = T_DEF.slice(); if (!h.days) h.days = {}; return h; };
+const normT = l => [...new Set(l)].filter(t => /^\d{2}:\d{2}$/.test(t)).sort();
+const dayTimes = k => { const h = hrs(); return Array.isArray(h.days[k]) ? h.days[k] : h.def; };
+let hDay = '';
+function hoursSaved() {
+  const h = hrs(), tk = todayKey(); Object.keys(h.days).forEach(k => { if (k < tk) delete h.days[k]; });
+  save(); if (W && W.__siteCfg) { W.__siteCfg.hours = JSON.parse(JSON.stringify(h)); if (W.__bookRefresh) W.__bookRefresh(); }
+}
+const chipsHTML = (list, a) => list.length ? `<div class="chips">${list.map(t => `<span class="chip">${t}<button type="button" data-${a}="${t}" title="Remover ${t}">×</button></span>`).join('')}</div>` : '<p class="hint">Nenhum horário.</p>';
+function renderHours() {
+  const p = $('#p-hor'), h = hrs(), tk = todayKey(), ov = Object.keys(h.days).filter(k => k >= tk).sort();
+  let day = '';
+  if (hDay) {
+    const custom = Array.isArray(h.days[hDay]);
+    day = `<label>${esc(fmtD(hDay))} · ${custom ? 'horários só deste dia' : 'usa os horários de todos os dias'}</label>${chipsHTML(dayTimes(hDay), 'rmd')}
+    <div class="row"><input type="time" id="h-dnew"><button class="pri" id="h-dadd" style="flex:0 0 auto">Adicionar</button></div>
+    <div class="row wrap" style="margin-top:8px"><button id="h-close">Fechar este dia</button>${custom ? '<button id="h-reset">Voltar ao padrão</button>' : ''}</div>`;
+  }
+  p.innerHTML = `<h3 style="margin-top:0">Horários de todos os dias</h3>
+  <p class="hint">Todos os dias, a partir de hoje, ficam abertos para a cliente com os horários abaixo. Adicione ou remova quando quiser.</p>
+  ${chipsHTML(h.def, 'rm')}
+  <div class="row"><input type="time" id="h-new"><button class="pri" id="h-add" style="flex:0 0 auto">Adicionar</button></div>
+  <h3>Um dia específico</h3>
+  <p class="hint">Escolha uma data para mudar só aquele dia (ou fechá-lo).</p>
+  <input type="date" id="h-day" min="${tk}" value="${esc(hDay)}">
+  ${day}
+  ${ov.length ? `<h3>Dias com horários próprios</h3><div class="chips">${ov.map(k => `<button type="button" class="chip pk ${k === hDay ? 'on' : ''}" data-pick="${k}">${k.slice(8)}/${k.slice(5, 7)} · ${h.days[k].length ? h.days[k].length + ' horários' : 'fechado'}</button>`).join('')}</div>` : ''}
+  <p class="hint" style="margin-top:14px">Quando todos os horários de um dia são reservados, o dia fica indisponível sozinho. Para encaixar uma cliente num dia fechado ou lotado, use a aba <b>Marcar</b>.</p>`;
+  p.onchange = e => { if (e.target.id === 'h-day') { hDay = e.target.value >= tk ? e.target.value : ''; renderHours(); } };
+  p.onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const v = id => ($(id, p) || {}).value || '';
+    if (b.dataset.rm) h.def = h.def.filter(x => x !== b.dataset.rm);
+    else if (b.id === 'h-add') { if (!v('#h-new')) return; h.def = normT([...h.def, v('#h-new')]); }
+    else if (b.dataset.rmd) h.days[hDay] = dayTimes(hDay).filter(x => x !== b.dataset.rmd);
+    else if (b.id === 'h-dadd') { if (!v('#h-dnew')) return; h.days[hDay] = normT([...dayTimes(hDay), v('#h-dnew')]); }
+    else if (b.id === 'h-close') h.days[hDay] = [];
+    else if (b.id === 'h-reset') delete h.days[hDay];
+    else if (b.dataset.pick) hDay = b.dataset.pick;
+    else return;
+    hoursSaved(); renderHours();
+  };
+}
+
+/* ---------- marcar manualmente (encaixes, inclusive em dias indisponíveis) ---------- */
+const mc = { nome: '', sobre: '', tel: '', wa: true, svc: '', date: '', t: '' };
+let mcDone = null;
+const maskTel = v => { v = v.replace(/\D/g, '').slice(0, 11); return v.length > 10 ? '(' + v.slice(0, 2) + ') ' + v.slice(2, 7) + '-' + v.slice(7) : v.length > 6 ? '(' + v.slice(0, 2) + ') ' + v.slice(2, 6) + '-' + v.slice(6) : v.length > 2 ? '(' + v.slice(0, 2) + ') ' + v.slice(2) : v; };
+const svcList = () => Array.isArray(state.services) ? state.services : ((W && W.__lists && W.__lists.builtin.services) || []);
+const liveBK = () => BK.filter(b => b.status !== 'cancelado');
+function dayStatus(k) {
+  const l = dayTimes(k), bs = liveBK().filter(b => b.date === k), busy = new Set(bs.map(b => b.t));
+  if (!l.length) return bs.length ? bs.length + ' agendado(s) · dia fechado' : 'dia fechado';
+  if (l.every(t => busy.has(t))) return 'dia lotado';
+  return bs.length ? bs.length + ' agendado(s)' : 'livre';
+}
+function renderMarcar() {
+  const p = $('#p-marcar'), sv = svcList(), tk = todayKey();
+  if (!mc.date || mc.date < tk) mc.date = tk; if (!mc.svc && sv[0]) mc.svc = sv[0].id;
+  p.innerHTML = `<p class="hint" style="margin-top:0">Para encaixar uma cliente, inclusive em dia fechado, lotado ou fora dos horários liberados. O agendamento já fica <b>confirmado</b> e o horário é bloqueado para as outras clientes.</p>
+  <div class="card">
+    <div class="row"><div><label style="margin-top:0">Nome</label><input id="mc-nome" value="${esc(mc.nome)}"></div><div><label style="margin-top:0">Sobrenome</label><input id="mc-sobre" value="${esc(mc.sobre)}"></div></div>
+    <label>Telefone / WhatsApp</label><input id="mc-tel" inputmode="tel" placeholder="(15) 99999-0000" value="${esc(mc.tel)}">
+    <label class="tg" style="margin:8px 0 0"><input type="checkbox" id="mc-wa" ${mc.wa ? 'checked' : ''}>Este número é WhatsApp</label>
+    <label>Serviço</label><select id="mc-svc">${sv.map(x => `<option value="${esc(x.id)}" ${x.id === mc.svc ? 'selected' : ''}>${esc(x.t)}</option>`).join('')}</select>
+    <div class="row"><div><label>Dia</label><input type="date" id="mc-date" min="${tk}" value="${esc(mc.date)}"></div><div><label>Horário</label><input type="time" id="mc-t" value="${esc(mc.t)}"></div></div>
+    <div id="mc-grid"></div>
+    <p class="err" id="mc-err" role="alert"></p>
+    <button class="pri" id="mc-go" style="width:100%;margin-top:6px">${I('check')}Marcar e confirmar</button>
+  </div>
+  <div id="mc-res">${mcDone ? `<div class="card"><b>Agendamento confirmado ✓</b><div class="hint">${esc(fmtD(mcDone.date))} · ${esc(mcDone.t)} · ${esc(mcDone.nome)}</div><div class="row wrap" style="margin-top:8px"><button data-mc="print">${I('print')}Imprimir comanda</button><button data-mc="wa">${I('chat')}Avisar no WhatsApp</button></div></div>` : ''}</div>
+  <h3>Tudo que já está agendado</h3><p class="hint">Toque em um dia para selecioná-lo no formulário.</p><div id="mc-list"></div>`;
+  p.oninput = e => {
+    const id = e.target.id, clear = () => { mcDone = null; $('#mc-res').innerHTML = ''; $('#mc-err').textContent = ''; };
+    if (id === 'mc-nome') mc.nome = e.target.value; else if (id === 'mc-sobre') mc.sobre = e.target.value;
+    else if (id === 'mc-tel') { e.target.value = mc.tel = maskTel(e.target.value); }
+    else if (id === 'mc-wa') mc.wa = e.target.checked; else if (id === 'mc-svc') mc.svc = e.target.value;
+    else if (id === 'mc-date') { mc.date = e.target.value; mc.t = ''; $('#mc-t').value = ''; drawMarcar(); }
+    else if (id === 'mc-t') { mc.t = e.target.value; drawMarcar(); } else return;
+    clear();
+  };
+  p.onclick = async e => {
+    const pk = e.target.closest('[data-pk]'), dd = e.target.closest('[data-dd]'), m = e.target.closest('[data-mc]');
+    if (pk) { mc.t = pk.dataset.pk; $('#mc-t').value = mc.t; drawMarcar(); }
+    else if (dd) { mc.date = dd.dataset.dd; mc.t = ''; $('#mc-date').value = mc.date; $('#mc-t').value = ''; drawMarcar(); p.scrollTop = 0; }
+    else if (m && mcDone) {
+      if (m.dataset.mc === 'print') printComanda(mcDone, studioInfo(D || document));
+      else window.open('https://wa.me/' + waNum(mcDone.tel) + '?text=' + encodeURIComponent('Olá, ' + mcDone.nome + '! Seu agendamento está confirmado ✅\n\n💇 ' + mcDone.svcName + '\n📅 ' + fmtD(mcDone.date) + '\n⏰ ' + mcDone.t + '\n\nTe esperamos! – Marta Andreolli'), '_blank');
+    }
+    else if (e.target.closest('#mc-go')) marcar();
+  };
+  drawMarcar();
+}
+function drawMarcar() {
+  const g = $('#mc-grid'), l = $('#mc-list'); if (!g || !l) return;
+  const k = mc.date, taken = new Map(liveBK().filter(b => b.date === k).map(b => [b.t, b]));
+  const all = normT([...dayTimes(k), ...taken.keys()]);
+  g.innerHTML = `<div class="hint" style="margin-top:8px">${esc(fmtD(k))}: <b>${esc(dayStatus(k))}</b>. Toque num horário livre ou digite outro acima.</div><div class="chips">${all.map(t => taken.has(t)
+    ? `<span class="chip tk" title="${esc(taken.get(t).nome + ' ' + taken.get(t).sobrenome)}">${t} · ${esc(taken.get(t).nome)}</span>`
+    : `<button type="button" class="chip pk ${mc.t === t ? 'on' : ''}" data-pk="${t}">${t}</button>`).join('') || '<span class="hint">Sem horários liberados neste dia. Digite o horário acima.</span>'}</div>`;
+  const by = {}; liveBK().filter(b => b.date >= todayKey()).sort((a, b) => (a.date + a.t) < (b.date + b.t) ? -1 : 1).forEach(b => (by[b.date] = by[b.date] || []).push(b));
+  l.innerHTML = Object.keys(by).sort().map(d => `<div class="card" style="padding:0"><div data-dd="${d}" style="display:flex;justify-content:space-between;gap:8px;padding:10px;cursor:pointer;${d === k ? 'background:#f6efe6;' : ''}border-radius:10px 10px 0 0"><b>${esc(fmtD(d))}</b><span class="hint">${esc(dayStatus(d))}</span></div>${by[d].map(b => `<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--line)"><b>${esc(b.t)}</b><span style="flex:1;min-width:0">${esc((b.nome + ' ' + b.sobrenome).trim())}<br><span class="hint">${esc(b.svcName)}${b.manual ? ' · manual' : ''}</span></span><span class="stt ${b.status === 'confirmado' ? 'ok' : ''}">${b.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span></div>`).join('')}</div>`).join('') || '<p class="hint">Nada agendado a partir de hoje.</p>';
+}
+async function marcar() {
+  const err = $('#mc-err'), btn = $('#mc-go'); err.textContent = '';
+  const nome = mc.nome.trim(), sob = mc.sobre.trim(), dig = mc.tel.replace(/\D/g, ''), s = svcList().find(x => x.id === mc.svc);
+  if (nome.length < 2) return err.textContent = 'Informe o nome.';
+  if (dig.length < 10) return err.textContent = 'Informe o telefone com DDD.';
+  if (!s) return err.textContent = 'Escolha o serviço.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(mc.date)) return err.textContent = 'Escolha o dia.';
+  if (!/^\d{2}:\d{2}$/.test(mc.t)) return err.textContent = 'Escolha ou digite o horário.';
+  const sid = mc.date + '_' + mc.t.replace(':', ''); btn.disabled = true;
+  try {
+    if ((await db.doc('slots/' + sid).get()).exists) { btn.disabled = false; return err.textContent = 'Esse horário já está ocupado. Escolha outro.'; }
+    const ref = db.collection('bookings').doc(), now = Date.now();
+    const data = { uid: 'manual', email: '', nome, sobrenome: sob, tel: mc.tel, wa: mc.wa, svc: s.id, svcName: s.t, date: mc.date, t: mc.t, status: 'confirmado', createdAt: now, confirmedAt: now, confirmedBy: me, manual: true };
+    const batch = db.batch();
+    batch.set(ref, data); batch.set(db.doc('slots/' + sid), { date: mc.date, t: mc.t, status: 'confirmado', uid: 'manual', bid: ref.id });
+    await batch.commit();
+    mcDone = { id: ref.id, ...data }; mc.nome = mc.sobre = mc.tel = ''; mc.t = '';
+    stat('Agendamento marcado e confirmado ✓'); renderMarcar();
+  } catch (e) {
+    btn.disabled = false;
+    err.textContent = /permission/i.test(e.message) ? 'Sem permissão. Publique o arquivo firestore.rules novo em Firebase → Firestore Database → Regras (botão Publicar) e tente de novo.' : e.message;
+  }
 }
 
 /* ---------- acessos (a dona libera contas; o diagnóstico é para todos) ---------- */
