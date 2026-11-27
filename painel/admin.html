@@ -37,12 +37,22 @@ h3{margin:14px 0 4px;font-size:.95rem}
 .stt{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#fbf1d6;color:#8a6414}
 .stt.ok{background:#e3f1e6;color:#2e6b43}.stt.no{background:#f8e5e1;color:#a3392b}
 .row.wrap{flex-wrap:wrap}.row.wrap>*{flex:1 1 auto}
-@media(max-width:900px){.main{grid-template-columns:1fr}aside{display:none}}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-3px}
+button .ic{margin-right:6px}button.sq .ic{margin:0}
+.seg{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;padding:3px;background:#f1ebe3;border-radius:999px;border:1px solid var(--line)}
+.seg button{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:6px;border:0;background:none;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:600;color:var(--mut);transition:color .3s}
+.seg button:hover{border:0}.seg button.on{color:#fff}
+.seg i{position:absolute;z-index:0;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:999px;background:linear-gradient(135deg,#b88555,#8f5f3a);box-shadow:0 6px 14px -6px rgba(143,95,58,.8);transition:transform .35s cubic-bezier(.22,.8,.24,1)}
+.seg.m i{transform:translateX(100%)}
+.seg .ic{margin:0;width:15px;height:15px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--bl);outline-offset:2px}
+@media(max-width:900px){.main{grid-template-columns:1fr}aside{display:none}.seg button span{display:none}}
 </style>
 <script src="firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="ui.js"></script>
 <script src="google-sync.js"></script>
 <script src="comanda.js"></script>
 </head>
@@ -65,12 +75,12 @@ h3{margin:14px 0 4px;font-size:.95rem}
   <div class="bar">
     <strong>Painel</strong>
     <select id="goto"><option value="#topo">Topo</option><option value="#servicos">Serviços</option><option value="#portfolio">Portfólio</option><option value="#sobre">Sobre</option><option value="#equipe">Equipe</option><option value="#depoimentos">Clientes</option><option value="#local">Onde estamos</option></select>
-    <button id="vw">📱 Celular</button>
+    <div class="seg" id="vw" role="group" aria-label="Visualização"><i></i><button type="button" data-m="0" class="on" aria-pressed="true" title="Computador"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2.2"/><path d="M8.5 20h7M12 16v4"/></svg><span>Computador</span></button><button type="button" data-m="1" aria-pressed="false" title="Celular"><svg class="ic" viewBox="0 0 24 24"><rect x="7" y="2.8" width="10" height="18.4" rx="2.6"/><path d="M10.6 18h2.8"/></svg><span>Celular</span></button></div>
     <span id="stat" class="hint"></span>
     <span class="sp"></span>
-    <a href="../index.html" target="_blank" class="hint">Ver site ↗</a>
+    <a href="../index.html" target="_blank" class="hint" style="display:flex;align-items:center;gap:5px;text-decoration:none">Ver site <svg class="ic" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10M19.5 4.5L11 13"/><path d="M17.5 14v3.6a1.9 1.9 0 01-1.9 1.9H6.4a1.9 1.9 0 01-1.9-1.9V8.4a1.9 1.9 0 011.9-1.9H10"/></svg></a>
     <span id="who" class="hint"></span>
-    <button id="out">Sair</button>
+    <button id="out"><svg class="ic" viewBox="0 0 24 24"><path d="M14 4.5h4.1A1.9 1.9 0 0120 6.4v11.2a1.9 1.9 0 01-1.9 1.9H14"/><path d="M10 8l-4 4 4 4M6 12h9.5"/></svg>Sair</button>
   </div>
   <div class="main">
     <div class="stage"><iframe id="ifr" title="Site"></iframe></div>
@@ -92,7 +102,10 @@ h3{margin:14px 0 4px;font-size:.95rem}
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 firebase.initializeApp(FB_CFG);
-try { history.replaceState(null, '', '/'); } catch (e) {}
+/* ícones e memória da tela (aba e modo de visualização sobrevivem ao recarregar) */
+const P = { desk: '<rect x="3" y="4" width="18" height="12" rx="2.2"/><path d="M8.5 20h7M12 16v4"/>', phone: '<rect x="7" y="2.8" width="10" height="18.4" rx="2.6"/><path d="M10.6 18h2.8"/>', copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.4"/><path d="M15.5 8.5V6.4A2.4 2.4 0 0013.1 4H6.4A2.4 2.4 0 004 6.4v6.7A2.4 2.4 0 006.4 15.5h2.1"/>', eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>', eyeoff: '<path d="M3.5 3.5l17 17M10.2 5.7A9.5 9.5 0 0112 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 01-3 3.8M6.4 7.4A16 16 0 002.5 12S6 18.5 12 18.5a9.4 9.4 0 003.7-.8"/><path d="M9.9 10A2.8 2.8 0 0014 14"/>', undo: '<path d="M4.5 9.5h9a5.5 5.5 0 010 11H9"/><path d="M8.5 5.5l-4 4 4 4"/>', check: '<path d="M4.5 12.5l5 5L19.5 7"/>', print: '<path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2.2"/><path d="M7 14h10v6.5H7z"/>', chat: '<path d="M20.5 11.8a7.9 7.9 0 01-11.6 7L4 20.2l1.4-4.6A7.9 7.9 0 1120.5 11.8z"/>', link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3A4 4 0 0011 18.7l1-1"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>', plus: '<path d="M12 5v14M5 12h14"/>', out: '<path d="M14 4.5h4.1A1.9 1.9 0 0120 6.4v11.2a1.9 1.9 0 01-1.9 1.9H14"/><path d="M10 8l-4 4 4 4M6 12h9.5"/>', ext: '<path d="M14 4.5h5.5V10M19.5 4.5L11 13"/><path d="M17.5 14v3.6a1.9 1.9 0 01-1.9 1.9H6.4a1.9 1.9 0 01-1.9-1.9V8.4a1.9 1.9 0 011.9-1.9H10"/>' };
+const I = n => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + P[n] + '</svg>';
+const mem = { get: (k, d) => { try { const v = localStorage.getItem('pn_' + k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem('pn_' + k, v); } catch (e) {} } };
 const auth = firebase.auth(), db = firebase.firestore();
 let me = '', isOwner = false, ifr = $('#ifr'), W, D, sel = null, saveT, state = { edits: {}, adds: [], vars: {}, quotes: null, instagram: '' };
 
@@ -100,7 +113,7 @@ const show = id => $$('.scr').forEach(s => s.classList.toggle('on', s.id === id)
 const stat = (t, bad) => { const e = $('#stat'); e.textContent = t; e.className = 'hint ' + (bad ? 'err' : ''); };
 
 /* ---------- login e permissão ---------- */
-$('#go').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
+$('#go').onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => UI.alert(e.message, { kind: 'error', title: 'Não foi possível entrar' }));
 $('#out').onclick = $('#denyOut').onclick = () => auth.signOut();
 auth.onAuthStateChanged(async u => {
   if (!u) return show('s-login');
@@ -113,6 +126,7 @@ auth.onAuthStateChanged(async u => {
   if (!ok) { $('#denyMail').textContent = em; return show('s-deny'); }
   me = em; $('#who').textContent = em; $('#tAcc').style.display = isOwner ? '' : 'none';
   show(null); $('#app').classList.add('on'); start();
+  const t0 = mem.get('tab', 'edit'); if ($('#p-' + t0) && (t0 !== 'acc' || isOwner)) tab(t0);
 });
 
 /* ---------- carregar conteúdo e abrir o site ---------- */
@@ -213,8 +227,8 @@ function renderInsp() {
     + imgs.map((im, i) => `<div class="card"><div class="row"><img src="${esc(im.currentSrc || im.src)}" style="max-width:64px;max-height:46px;object-fit:cover;flex:0 0 auto"><div><label>Imagem (link)</label><input data-img="${i}" value="${esc(/^data:/.test(im.getAttribute('src') || '') ? '' : (im.getAttribute('src') || ''))}" placeholder="imagem enviada do computador"></div></div><label>…ou enviar do computador</label><input type="file" accept="image/*" data-up="${i}"><div class="hint">O tamanho é ajustado automaticamente e a imagem fica salva no Firebase, junto com os textos.</div></div>`).join('')
     + `<div class="row"><div><label>Cor do texto</label><input type="color" id="i-c" value="${hex(cs.color) || '#000000'}"></div><div><label>Cor de fundo</label><input type="color" id="i-bg" value="${hex(cs.backgroundColor) || '#ffffff'}"></div><div><label>Tamanho (px)</label><input type="number" id="i-fs" value="${parseInt(cs.fontSize)}"></div></div>`
     + `<label>Alinhamento</label><select id="i-al"><option value="">—</option><option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option></select>`
-    + `<div class="row" style="margin-top:14px"><button id="b-dup">⧉ Duplicar</button><button id="b-hide">${e.hide ? '👁 Mostrar' : '🚫 Ocultar'}</button></div>`
-    + `<div class="row" style="margin-top:8px"><button id="b-rev">↺ Reverter este item</button>${isClone ? '<button id="b-del" class="dng">Remover cópia</button>' : ''}</div>`;
+    + `<div class="row" style="margin-top:14px"><button id="b-dup">${I('copy')}Duplicar</button><button id="b-hide">${e.hide ? I('eye') + 'Mostrar' : I('eyeoff') + 'Ocultar'}</button></div>`
+    + `<div class="row" style="margin-top:8px"><button id="b-rev">${I('undo')}Reverter este item</button>${isClone ? '<button id="b-del" class="dng">Remover cópia</button>' : ''}</div>`;
   const $p = s => $(s, p);
   if (a) $p('#i-href').onchange = ev => { a.setAttribute('href', ev.target.value); rec(a, { href: ev.target.value }); };
   $$('[data-img]', p).forEach(inp => inp.onchange = () => { const im = imgs[inp.dataset.img]; im.removeAttribute('srcset'); im.setAttribute('src', inp.value); rec(im, { src: inp.value }); });
@@ -230,7 +244,7 @@ function renderInsp() {
       const prev = (state.edits[im.dataset.eid] || {}).src; if (prev && prev.startsWith('fb:')) db.doc('imgs/' + prev.slice(3)).delete().catch(() => {});
       im.removeAttribute('srcset'); im.setAttribute('src', out.url); rec(im, { src: 'fb:' + id });
       stat('Imagem salva ✓ (' + out.w + '×' + out.h + ', ' + Math.round(out.url.length * 0.75 / 1024) + ' KB)'); renderInsp();
-    } catch (e) { stat('Erro na imagem: ' + e.message, 1); alert('Não foi possível usar essa imagem.\n\n' + e.message); }
+    } catch (e) { stat('Erro na imagem: ' + e.message, 1); UI.alert(e.message, { kind: 'error', title: 'Não foi possível usar essa imagem' }); }
   });
   $p('#i-c').oninput = ev => setCss('color', ev.target.value);
   $p('#i-bg').oninput = ev => setCss('background-color', ev.target.value);
@@ -252,7 +266,7 @@ function renderInsp() {
 }
 
 /* ---------- abas ---------- */
-function tab(t) { $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); }
+function tab(t) { if (t !== 'acc' || isOwner) mem.set('tab', t); $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); if (t === 'acc') renderAcc(); }
 $('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); };
 $('#goto').onchange = e => { if (W) W.location.hash = e.target.value; };
 /* Computador: o site é desenhado em 1280px reais e reduzido para caber (fica igual ao que se vê no PC). Celular: 390px. */
@@ -264,7 +278,13 @@ function fitStage() {
   const DW = 1280, k = Math.min(1, w / DW);
   ifr.style.cssText = 'width:' + DW + 'px;height:' + (h / k) + 'px;transform:scale(' + k + ');transform-origin:top left;flex:none;margin:0 auto';
 }
-$('#vw').onclick = () => { mobile = !mobile; $('#vw').textContent = mobile ? '🖥 Computador' : '📱 Celular'; fitStage(); };
+function setMode(m) {
+  mobile = m; mem.set('mobile', m ? '1' : '0'); $('#vw').classList.toggle('m', m);
+  $$('#vw button').forEach(b => { const on = (b.dataset.m === '1') === m; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  fitStage();
+}
+$('#vw').onclick = e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m === '1'); };
+setMode(mem.get('mobile', '0') === '1');
 window.addEventListener('resize', fitStage); fitStage();
 if (window.ResizeObserver) new ResizeObserver(fitStage).observe($('.stage'));
 
@@ -284,7 +304,7 @@ function renderRev() {
     if (!e.target.hasAttribute('data-rvup') || !e.target.files[0]) return;
     const i = e.target.closest('.card').dataset.i;
     try { const o = await fitImage(e.target.files[0], { max: 160, square: true, limit: 24000, q: 0.8 }); state.quotes[i].photo = o.url; save(); renderRev(); W.__cms.renderQuotes(state.quotes); }
-    catch (er) { alert('Não foi possível usar essa foto.\n\n' + er.message); }
+    catch (er) { UI.alert(er.message, { kind: 'error', title: 'Não foi possível usar essa foto' }); }
   };
   p.onclick = e => {
     if (e.target.id === 'rv-add') { state.quotes.push({ n: '', t: '', r: 'Avaliação no Google', s: 5 }); save(); renderRev(); }
@@ -392,7 +412,7 @@ function drawAgenda() {
     return `<div class="card" data-b="${esc(b.id)}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(fmtD(b.date))} · ${esc(b.t)}</b><span class="stt ${st[0]}">${st[1]}</span></div>
       <div style="margin-top:4px">${esc(b.nome + ' ' + b.sobrenome)} · ${esc(b.svcName)}</div>
       <div class="hint">${esc(b.wa ? 'WhatsApp ' : 'Telefone ')}${esc(b.tel)} · ${esc(b.email)}</div>
-      <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">✓ Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">🖨 Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">💬 Cliente</button>' : ''}<button data-a="copy">🔗 Link</button>${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">Cancelar</button>' : ''}</div></div>`;
+      <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">' + I('check') + 'Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">' + I('print') + 'Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">' + I('chat') + 'Cliente</button>' : ''}<button data-a="copy">${I('link')}Link</button>${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">' + I('x') + 'Cancelar</button>' : ''}</div></div>`;
   }).join('') || '<p class="hint">Nenhum agendamento aqui.</p>';
 }
 async function setBooking(b, status) {
@@ -411,14 +431,14 @@ async function agClick(e) {
   const b = BK.find(x => x.id === btn.closest('[data-b]').dataset.b); if (!b) return; const a = btn.dataset.a;
   try {
     if (a === 'ok') await setBooking(b, 'confirmado');
-    else if (a === 'cx') { if (confirm('Cancelar o agendamento de ' + b.nome + ' e liberar o horário?')) await setBooking(b, 'cancelado'); }
+    else if (a === 'cx') { if (await UI.confirm('O horário de ' + b.nome + ' será liberado para outras clientes.', { title: 'Cancelar agendamento?', ok: 'Cancelar agendamento', cancel: 'Manter', danger: true })) await setBooking(b, 'cancelado'); }
     else if (a === 'copy') { await navigator.clipboard.writeText(confirmLink(b.id)); stat('Link de confirmação copiado ✓'); }
     else if (a === 'print') printComanda(b, studioInfo(D || document));
     else if (a === 'wa') {
       const txt = 'Olá, ' + b.nome + '! ' + (b.status === 'confirmado' ? 'Seu agendamento está confirmado ✅' : 'Sobre o seu agendamento:') + '\n\n💇 ' + b.svcName + '\n📅 ' + fmtD(b.date) + '\n⏰ ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + new URL('../index.html#agendar', location.href).href + '\n\nTe esperamos! – Marta Andreolli';
       window.open('https://wa.me/' + waNum(b.tel) + '?text=' + encodeURIComponent(txt), '_blank');
     }
-  } catch (er) { stat('Erro: ' + er.message, 1); alert(er.message); }
+  } catch (er) { stat('Erro: ' + er.message, 1); UI.alert(er.message, { kind: 'error' }); }
 }
 
 /* ---------- acessos (só a dona) ---------- */
@@ -430,10 +450,10 @@ async function renderAcc() {
   <label>Liberar uma conta Google</label><div class="row"><input id="ad-m" type="email" placeholder="email@gmail.com"><button class="pri" id="ad-add" style="flex:0 0 auto">Liberar</button></div>
   <h3>Editores liberados</h3><div class="list">${adm.map(m => `<div><span>${esc(m)}</span><button class="dng" data-rm="${esc(m)}">Remover</button></div>`).join('') || '<p class="hint">Nenhum além da dona.</p>'}</div>
   <h3>Clientes que já entraram</h3><div class="list">${usr.filter(u => u.email && !adm.includes(u.email.toLowerCase()) && u.email.toLowerCase() !== OWNER_EMAIL.toLowerCase()).map(u => `<div><span>${esc(u.name || '')}<br><small class="hint">${esc(u.email)}</small></span><button data-mk="${esc(u.email.toLowerCase())}">Dar acesso</button></div>`).join('') || '<p class="hint">Ainda ninguém.</p>'}</div>`;
-  const add = async m => { m = (m || '').trim().toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) return alert('E-mail inválido'); await db.doc('admins/' + m).set({ email: m, addedBy: me, at: Date.now() }); renderAcc(); };
+  const add = async m => { m = (m || '').trim().toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) return UI.alert('Digite um e-mail completo, como nome@gmail.com.', { kind: 'warn', title: 'E-mail inválido' }); await db.doc('admins/' + m).set({ email: m, addedBy: me, at: Date.now() }); renderAcc(); };
   $('#ad-add', p).onclick = () => add($('#ad-m', p).value);
   p.onclick = async e => {
-    if (e.target.dataset.rm) { if (confirm('Remover o acesso de ' + e.target.dataset.rm + '?')) { await db.doc('admins/' + e.target.dataset.rm).delete(); renderAcc(); } }
+    if (e.target.dataset.rm) { if (await UI.confirm(e.target.dataset.rm + ' não poderá mais entrar no painel.', { title: 'Remover acesso?', ok: 'Remover', cancel: 'Manter', danger: true })) { await db.doc('admins/' + e.target.dataset.rm).delete(); renderAcc(); } }
     if (e.target.dataset.mk) add(e.target.dataset.mk);
   };
 }

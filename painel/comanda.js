@@ -88,7 +88,7 @@
     var fontsReady = (d.fonts && d.fonts.ready) ? Promise.race([d.fonts.ready, new Promise(function (r) { setTimeout(r, 1800); })]) : Promise.resolve();
     setTimeout(function () {
       fontsReady.then(function () {
-        try { w.focus(); w.print(); } catch (x) { alert('Não foi possível abrir a impressão neste aparelho.'); }
+        try { w.focus(); w.print(); } catch (x) { window.UI ? UI.alert('Não foi possível abrir a impressão neste aparelho.', { kind: 'warn', title: 'Impressão indisponível' }) : null; }
         setTimeout(function () { if (f.parentNode) f.parentNode.removeChild(f); }, 60000);
       });
     }, 250);
