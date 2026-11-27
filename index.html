@@ -418,6 +418,10 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   <symbol id="i-make" viewBox="0 0 40 40"><path d="M10 34h20V20H10zM14 20v-7h12v7M17 13V5h6v8"/></symbol>
   <symbol id="i-flor" viewBox="0 0 40 40"><circle cx="20" cy="20" r="4"/><path d="M20 16c-3-6-1-11 0-12 1 1 3 6 0 12zM24 20c6-3 11-1 12 0-1 1-6 3-12 0zM20 24c3 6 1 11 0 12-1-1-3-6 0-12zM16 20c-6 3-11 1-12 0 1-1 6-3 12 0z"/></symbol>
   <symbol id="i-noiva" viewBox="0 0 40 40"><path d="M20 6l4 8 9 1-6.5 6 1.7 9L20 26l-8.2 4 1.7-9L7 15l9-1z"/></symbol>
+  <symbol id="i-brilho" viewBox="0 0 40 40"><path d="M20 5c1.2 8 3.8 11.8 12 13-8.2 1.2-10.8 5-12 13-1.2-8-3.8-11.8-12-13 8.2-1.2 10.8-5 12-13z"/><path d="M32 4v6M29 7h6"/></symbol>
+  <symbol id="i-coracao" viewBox="0 0 40 40"><path d="M20 34S5 25 5 14.5A7.5 7.5 0 0120 11a7.5 7.5 0 0115 3.5C35 25 20 34 20 34z"/></symbol>
+  <symbol id="i-folha" viewBox="0 0 40 40"><path d="M8 32C6 18 16 7 33 7c0 16-9 26-22 24"/><path d="M8 32c6-9 12-14 20-18"/></symbol>
+  <symbol id="i-pente" viewBox="0 0 40 40"><rect x="5" y="9" width="30" height="9" rx="3"/><path d="M10 18v13M16 18v13M22 18v13M28 18v13"/></symbol>
   <symbol id="i-pin" viewBox="0 0 40 40"><path d="M20 36s11-9.5 11-18a11 11 0 00-22 0c0 8.5 11 18 11 18z"/><circle cx="20" cy="18" r="4"/></symbol>
   <symbol id="i-rel" viewBox="0 0 40 40"><circle cx="20" cy="20" r="14"/><path d="M20 11v9l6 4"/></symbol>
 </svg>
@@ -778,19 +782,27 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   $('#heroArt').innerHTML = art(7,0,0) + pic(U('1560066984-138dadb4c035',1000));
   $('#aboutArt').innerHTML = art(21,2,1) + pic(U('1521590832167-7bcbfaa6381f',1000));
 
-  /* serviços */
+  /* serviços, portfólio e equipe: listas que o painel pode adicionar, excluir e reordenar */
   var arrow = '<svg class="arr" viewBox="0 0 20 20"><path d="M3 10h13M11 4l6 6-6 6"/></svg>';
-  $('#svcGrid').innerHTML = SERVICES.map(function(s){
-    return '<button class="card" data-svc="'+s.id+'"><span class="ic"><svg class="ico"><use href="#i-'+s.ic+'"/></svg></span><h3>'+s.t+'</h3><p>'+s.d+'</p><span class="price">'+s.p+arrow+'</span></button>';
-  }).join('');
-
-  /* portfólio */
-  var cats = ['Todos'].concat(WORKS.map(function(w){return w.cat}).filter(function(c,i,a){return a.indexOf(c)===i}));
-  $('#filters').innerHTML = cats.map(function(c,i){return '<button class="pill" data-cat="'+c+'" aria-pressed="'+(i===0)+'">'+c+'</button>'}).join('');
-  $('#mosaic').innerHTML = WORKS.map(function(w,i){
-    var inner = art(i+1,w.pal,motifOf(w.cat)) + pic(PHOTOS[w.id]);
-    return '<button class="tile '+w.cls+'" data-w="'+i+'" data-cat="'+w.cat+'" aria-label="Abrir '+w.t+'">'+inner+'<span class="over"><small>'+w.cat+'</small><b>'+w.t+'</b></span><span class="plus"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span></button>';
-  }).join('');
+  var eh = function(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); };
+  function renderServices(){
+    $('#svcGrid').innerHTML = SERVICES.map(function(s){
+      return '<button class="card" data-svc="'+eh(s.id)+'"><span class="ic"><svg class="ico"><use href="#i-'+eh(s.ic||'brilho')+'"/></svg></span><h3>'+eh(s.t)+'</h3><p>'+eh(s.d)+'</p><span class="price">'+eh(s.p)+arrow+'</span></button>';
+    }).join('');
+  }
+  function renderWorks(){
+    var cats = ['Todos'].concat(WORKS.map(function(w){return w.cat}).filter(function(c,i,a){return c && a.indexOf(c)===i}));
+    $('#filters').innerHTML = cats.map(function(c,i){return '<button class="pill" data-cat="'+eh(c)+'" aria-pressed="'+(i===0)+'">'+eh(c)+'</button>'}).join('');
+    $('#mosaic').classList.remove('flat');
+    $('#mosaic').innerHTML = WORKS.map(function(w,i){
+      var inner = art(i+1,w.pal||0,motifOf(w.cat)) + pic(eh(w.photo!==undefined ? w.photo : PHOTOS[w.id]));
+      return '<button class="tile '+eh(w.cls||'')+'" data-w="'+i+'" data-cat="'+eh(w.cat)+'" aria-label="Abrir '+eh(w.t)+'">'+inner+'<span class="over"><small>'+eh(w.cat)+'</small><b>'+eh(w.t)+'</b></span><span class="plus"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span></button>';
+    }).join('');
+  }
+  function renderTeam(){
+    $('#teamGrid').innerHTML = TEAM.map(function(p,i){return '<div class="pro"><div class="ph">'+art(40+i,p.pal||0,0)+pic(eh(p.photo!==undefined ? p.photo : TEAMPH[i]))+'</div><b>'+eh(p.n)+'</b><span>'+eh(p.r)+'</span></div>'}).join('');
+  }
+  renderServices(); renderWorks();
   $('#filters').addEventListener('click',function(e){
     var b = e.target.closest('.pill'); if(!b) return;
     $$('.pill').forEach(function(p){p.setAttribute('aria-pressed', p===b)});
@@ -799,7 +811,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   });
 
   /* equipe e depoimentos */
-  $('#teamGrid').innerHTML = TEAM.map(function(p,i){return '<div class="pro"><div class="ph">'+art(40+i,p.pal,0)+pic(TEAMPH[i])+'</div><b>'+p.n+'</b><span>'+p.r+'</span></div>'}).join('');
+  renderTeam();
   /* nota e total calculados a partir da lista QUOTES (cada item pode ter s:1 a 5; padrão 5) */
   (function(){
     var n = QUOTES.length, sum = QUOTES.reduce(function(a,q){ return a+(q.s||5); },0);
@@ -837,7 +849,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function show(i){
     cur = (i+WORKS.length)%WORKS.length; var w = WORKS[cur];
     var ti = $('.tile[data-w="'+cur+'"] img.pic'), ps = ti ? (ti.getAttribute('src')||'') : '';
-    if(ps.indexOf('images.unsplash.com')>-1) ps = U(ps.split('photo-')[1].split('?')[0],1100);
+    if(ps.indexOf('images.unsplash.com')>-1 && ps.indexOf('photo-')>-1) ps = U(ps.split('photo-')[1].split('?')[0],1100);
     $('#lbArt').innerHTML = art(cur+1,w.pal,motifOf(w.cat)) + pic(ps);
     $('#lbCat').textContent = w.cat; $('#lbTitle').textContent = w.t; $('#lbDesc').textContent = w.d;
     $('#lbMeta').innerHTML = '<div><span>Profissional</span><b>'+w.who+'</b></div><div><span>Duração</span><b>'+w.time+'</b></div><div><span>Categoria</span><b>'+w.cat+'</b></div>';
@@ -845,8 +857,9 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function step(n){ show(cur+n); }
   $('#mosaic').addEventListener('click',function(e){ var t = e.target.closest('.tile'); if(!t) return; show(+t.dataset.w); open($('#vLb')); });
   $('#lbPrev').onclick = function(){step(-1)}; $('#lbNext').onclick = function(){step(1)};
-  $('#lbBook').onclick = function(){ var w = WORKS[cur]; close($('#vLb')); setTimeout(function(){ openBook(guess(w.cat)); },250); };
+  $('#lbBook').onclick = function(){ var w = WORKS[cur]; close($('#vLb')); setTimeout(function(){ openBook(svcOf(w)); },250); };
   function guess(cat){ return {Cabelo:'corte','Coloração':'cor',Unhas:'unhas',Maquiagem:'make','Estética':'este'}[cat] }
+  function svcOf(w){ return (w.svc && SERVICES.some(function(x){return x.id===w.svc;})) ? w.svc : guess(w.cat); }
 
   /* agendamento: subpágina #agendar */
   /* Instagram: coloque só o @ do perfil (ex.: 'martaandreolli'). Vazio = os links ficam escondidos. */
@@ -1128,6 +1141,19 @@ function onAct(e){
   var hero = $('#hero'), glow = $('#glow');
   hero.addEventListener('pointermove',function(e){ var r = hero.getBoundingClientRect(); glow.style.setProperty('--mx',(e.clientX-r.left)+'px'); glow.style.setProperty('--my',(e.clientY-r.top)+'px'); });
 
+  /* API usada pelo CMS e pelo painel para trocar as listas sem recarregar */
+  var BUILTIN = JSON.parse(JSON.stringify({services:SERVICES, works:WORKS.map(function(w){ var c = Object.assign({},w); c.photo = PHOTOS[w.id]; return c; }), team:TEAM.map(function(t,i){ var c = Object.assign({},t); c.photo = TEAMPH[i]; return c; })}));
+  window.__lists = {
+    builtin: BUILTIN,
+    set: function(kind, list){
+      var tgt = kind==='services' ? SERVICES : kind==='works' ? WORKS : TEAM;
+      tgt.length = 0; list.forEach(function(x){ tgt.push(x); });
+      if(kind==='services'){ renderServices(); if(B.svc && !SERVICES.some(function(x){return x.id===B.svc;})) B.svc = null; if(isBook()) renderBook(); }
+      else if(kind==='works') renderWorks();
+      else renderTeam();
+    }
+  };
+
   /* botões magnéticos */
   $$('.btn.solid,.btn.white').forEach(function(b){
     b.addEventListener('pointermove',function(e){ var r = b.getBoundingClientRect(); b.style.translate = ((e.clientX-r.left-r.width/2)*.12)+'px '+((e.clientY-r.top-r.height/2)*.18)+'px'; });
@@ -1238,14 +1264,30 @@ function onAct(e){
       return d || '';
     }).catch(function(){ delete imgP[id]; return ''; }));
   }
+  /* serviços / portfólio / equipe vindos do painel (só substitui quando o painel já salvou a lista) */
+  var listTok = {};
+  function applyLists(c){
+    if(!window.__lists || !c) return;
+    ['services','works','team'].forEach(function(k){
+      var l = c[k]; if(!Array.isArray(l)) return;
+      var tok = listTok[k] = (listTok[k]||0)+1, jobs = [];
+      var out = l.map(function(x){
+        var y = Object.assign({},x), ph = y.photo || '';
+        if(/^fb:/.test(ph)){ y.photo = ''; jobs.push(getImg(ph.slice(3)).then(function(d){ y.photo = d || ''; })); }
+        return y;
+      });
+      window.__lists.set(k,out);
+      if(jobs.length) Promise.all(jobs).then(function(){ if(listTok[k]===tok) window.__lists.set(k,out); });
+    });
+  }
   function run(){
     window.__siteCfg = content || {};
     restore();
-    if(content) applyContent(content);
+    if(content){ applyContent(content); applyLists(content); }
     if(!ADMIN && gdata && gdata.enabled && gdata.data) applyG(gdata.data);
     else renderQuotes(content && content.quotes && content.quotes.length ? content.quotes : builtin);
   }
-  function done(){ if(ready) return; ready = true; window.__cms = {builtin:builtin, renderQuotes:renderQuotes, san:san}; window.__cmsReady = true; }
+  function done(){ if(ready) return; ready = true; window.__cms = {builtin:builtin, renderQuotes:renderQuotes, san:san, getImg:getImg, applyLists:applyLists}; window.__cmsReady = true; }
 
   /* 4) Firebase: leitura em tempo real (visitantes) / leitura única (painel) */
   var db = null;
