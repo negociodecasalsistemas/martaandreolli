@@ -78,7 +78,8 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   var ID = new URLSearchParams(location.search).get('b');
   var views = ['load', 'login', 'msg', 'ok'];
   var show = function (v) { views.forEach(function (n) { $('#v-' + n).hidden = n !== v; }); };
-  var msg = function (h, p, kind, out) { $('#msgH').textContent = h; $('#msgP').textContent = p; $('#msgSeal').className = 'seal ' + (kind || 'bad'); $('#msgOut').hidden = !out; show('msg'); };
+  var clean = function () { try { history.replaceState(null, '', '/'); } catch (e) {} };
+  var msg = function (h, p, kind, out) { clean(); $('#msgH').textContent = h; $('#msgP').textContent = p; $('#msgSeal').className = 'seal ' + (kind || 'bad'); $('#msgOut').hidden = !out; show('msg'); };
 
   if (!ID) return msg('Link inválido', 'Este link de confirmação está incompleto. Peça à cliente para enviar novamente.');
   if (!window.firebase || !window.FB_CFG) return msg('Sem conexão', 'Não foi possível carregar o Firebase. Verifique a internet e tente de novo.');
@@ -94,7 +95,7 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
     try { return (await db.doc('admins/' + em).get()).exists; } catch (e) { return false; }
   }
   function render(b, note) {
-    B = b; show('ok');
+    B = b; clean(); show('ok');
     var ok = b.status === 'confirmado';
     $('#okSum').innerHTML = [['Cliente', b.nome + ' ' + b.sobrenome], ['Serviço', b.svcName], ['Dia', fmtD(b.date)], ['Horário', b.t], ['Contato', (b.wa ? 'WhatsApp ' : 'Telefone ') + b.tel]]
       .map(function (r) { return '<div><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
