@@ -485,7 +485,9 @@ function renderGeral() {
   p.innerHTML = `<label>Instagram (somente o @)</label><input id="ig" value="${esc(state.instagram || '')}" placeholder="@seuperfil"><p class="hint">Aparece como botão “Instagram” em “Onde estamos” e no rodapé.</p>
   <h3>Cores do site</h3>${Object.keys(vars).map(k => `<div class="row" style="margin-bottom:6px"><span class="hint" style="flex:1">${k}</span><input type="color" data-v="${k}" value="${state.vars[k] || vars[k]}" style="flex:0 0 70px"></div>`).join('') || '<p class="hint">Nenhuma cor simples encontrada.</p>'}
   <button id="rs" style="margin-top:8px">Restaurar cores originais</button>
+  <h3>Redes sociais</h3><p class="hint">Aparecem no rodapé do site, só como ícone clicável.</p><div id="soc-box"></div>
   <h3>Diagnóstico</h3><p class="hint">Se algo der “Missing or insufficient permissions”, clique aqui e veja qual permissão está faltando.</p><button id="dg">Testar permissões</button><pre id="dgo" class="hint" style="white-space:pre-wrap;margin-top:8px"></pre>`;
+  drawSoc();
   $('#ig', p).oninput = e => { state.instagram = e.target.value; save(); const u = state.instagram.replace(/^@/, '').trim(); $$('.igl', D).forEach(a => { a.style.display = u ? '' : 'none'; if (u) a.href = 'https://www.instagram.com/' + u + '/'; }); };
   p.oninput = e => { const k = e.target.dataset.v; if (!k) return; state.vars[k] = e.target.value; D.documentElement.style.setProperty(k, e.target.value); save(); };
   $('#dg', p).onclick = async () => {
@@ -501,6 +503,37 @@ function renderGeral() {
   };
   $('#rs', p).onclick = () => { Object.keys(state.vars).forEach(k => D.documentElement.style.removeProperty(k)); state.vars = {}; save(); renderGeral(); };
 }
+
+/* ---------- redes sociais ---------- */
+const SOC_PH = { instagram: '@seuperfil', whatsapp: '(15) 99999-9999', facebook: 'link da página', tiktok: '@seuperfil', youtube: 'link do canal', linkedin: 'link do perfil', pinterest: 'link do perfil', x: '@seuperfil', telegram: '@seuperfil', email: 'contato@email.com', site: 'www.seusite.com.br' };
+function drawSoc() {
+  const box = $('#soc-box'); if (!box || !W || !W.__cms) return;
+  const SO = W.__cms.SOC, L = state.socials = state.socials || [];
+  const ic = t => '<svg class="ic" viewBox="0 0 24 24" style="width:20px;height:20px">' + SO[t][1] + '</svg>';
+  box.innerHTML = L.map((x, i) => `<div class="card it" data-i="${i}"><div class="row" style="align-items:center"><span style="flex:0 0 36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#f1ebe3;color:var(--b)">${ic(x.t)}</span>`
+    + `<select data-k="t" style="flex:1.2">${Object.keys(SO).map(k => `<option value="${k}" ${k === x.t ? 'selected' : ''}>${SO[k][0]}</option>`).join('')}</select>`
+    + `<span class="mv" style="flex:0 0 auto"><button class="sq" data-mv="-1" ${i === 0 ? 'disabled' : ''}>${I('up')}</button><button class="sq" data-mv="1" ${i === L.length - 1 ? 'disabled' : ''}>${I('down')}</button><button class="sq dng" data-del>${I('trash')}</button></span></div>`
+    + `<input data-k="u" value="${esc(x.u)}" placeholder="${esc(SOC_PH[x.t] || '')}" style="margin-top:8px"></div>`).join('')
+    + `<button class="addb" id="soc-add">${I('plus')}Adicionar rede social</button>`;
+}
+const socSave = () => { save(); if (W && W.__cms) W.__cms.renderSocials(state.socials); };
+document.addEventListener('click', async e => {
+  const box = e.target.closest && e.target.closest('#soc-box'); if (!box) return;
+  const L = state.socials;
+  if (e.target.closest('#soc-add')) { const used = L.map(x => x.t), t = Object.keys(W.__cms.SOC).find(k => !used.includes(k)) || 'instagram'; L.push({ t, u: '' }); socSave(); return drawSoc(); }
+  const card = e.target.closest('.it'); if (!card) return; const i = +card.dataset.i;
+  const mv = e.target.closest('[data-mv]'), del = e.target.closest('[data-del]');
+  if (mv) { const j = i + +mv.dataset.mv; if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; socSave(); drawSoc(); }
+  else if (del) {
+    if (!await UI.confirm('O ícone sai do rodapé do site.', { title: 'Remover rede social?', ok: 'Remover', cancel: 'Manter', danger: true })) return;
+    L.splice(i, 1); socSave(); drawSoc();
+  }
+});
+document.addEventListener('input', e => {
+  const card = e.target.closest && e.target.closest('#soc-box .it'); if (!card || !e.target.dataset.k) return;
+  const x = state.socials[+card.dataset.i]; x[e.target.dataset.k] = e.target.value;
+  if (e.target.dataset.k === 't') drawSoc(); socSave();
+});
 
 /* ---------- agenda: agendamentos das clientes (tempo real) ---------- */
 let BK = [], agFilter = 'pend', agUnsub = null, agErr = '';
