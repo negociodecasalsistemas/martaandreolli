@@ -79,7 +79,8 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   var ID = new URLSearchParams(location.search).get('b');
   var views = ['load', 'login', 'msg', 'ok'];
   var show = function (v) { views.forEach(function (n) { $('#v-' + n).hidden = n !== v; }); };
-  var clean = function () {};
+  var RET = location.pathname + location.search;
+  var clean = function () { try { sessionStorage.setItem('ma_return', RET); history.replaceState(null, '', '/'); } catch (e) {} };
   var msg = function (h, p, kind, out) { clean(); $('#msgH').textContent = h; $('#msgP').textContent = p; $('#msgSeal').className = 'seal ' + (kind || 'bad'); $('#msgOut').hidden = !out; show('msg'); };
 
   if (!ID) return msg('Link inválido', 'Este link de confirmação está incompleto. Peça à cliente para enviar novamente.');
