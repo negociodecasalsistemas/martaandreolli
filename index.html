@@ -900,7 +900,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     if(!db || !B.user || !B.user.uid || unsubSlots) return;
     unsubSlots = db.collection('slots').where('date','>=',keyOf(today)).onSnapshot(function(s){
       SLOTS = {}; s.forEach(function(d){ SLOTS[d.id] = d.data(); });
-      if(location.hash==='#agendar' && B.user && profileOf()){ renderCal(); renderTimes(); }
+      if(isBook() && B.user && profileOf()){ renderCal(); renderTimes(); }
     }, function(){});
     unsubMine = db.collection('bookings').where('uid','==',B.user.uid).onSnapshot(function(s){
       MY = s.docs.map(function(d){ var o = d.data(); o.id = d.id; return o; });
@@ -1022,7 +1022,7 @@ function renderMine(){
     if(!FIREBASE_CONFIG || !window.firebase) return;
     if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
     fbAuth = firebase.auth();
-    fbAuth.onAuthStateChanged(function(u){ if(!u) stopSync(); B.user = u ? {email:u.email, uid:u.uid} : null; if(location.hash==='#agendar') renderBook(); });
+    fbAuth.onAuthStateChanged(function(u){ if(!u) stopSync(); B.user = u ? {email:u.email, uid:u.uid} : null; if(isBook()) renderBook(); });
   }
   function loginAs(email){
     B.user = {email:email}; LS.set('ma_user',B.user);
@@ -1099,17 +1099,21 @@ function onAct(e){
   };
 
   /* entradas do site para a subpágina */
-  function goBook(svc){ if(svc) B.svc = svc; if(location.hash==='#agendar') renderBook(); else location.hash = '#agendar'; }
+  function goBook(svc){ if(svc) B.svc = svc; if(isBook()) renderBook(); else location.hash = '#agendar'; }
   function openBook(svc){ goBook(svc); }
   $$('[data-book]').forEach(function(b){ b.addEventListener('click',function(){ goBook(); }); });
   $('#svcGrid').addEventListener('click',function(e){ var c = e.target.closest('.card'); if(c) goBook(c.dataset.svc); });
 
   /* rotas: página inicial e #agendar */
+  function isBook(){ return !$('#pageBook').hidden; }
+  /* mantém a barra de endereço sempre só com o domínio */
+  function cleanUrl(){ if(window.top!==window) return; try{ history.replaceState(null,'',location.pathname.replace(/[^\/]*$/,'')||'/'); }catch(e){} }
   function route(){
     var h = location.hash, book = (h==='#agendar');
     $('#pageBook').hidden = !book; $('main').hidden = book; $('footer').hidden = book;
     if(book){ renderBook(); window.scrollTo(0,0); }
     else if(h.length>1){ var el = document.getElementById(h.slice(1)); if(el) setTimeout(function(){ el.scrollIntoView(); },30); }
+    setTimeout(cleanUrl,150);
   }
   window.addEventListener('hashchange',route);
   initFirebase(); route();
