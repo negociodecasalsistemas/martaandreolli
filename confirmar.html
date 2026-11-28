@@ -99,7 +99,7 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
   function render(b, note) {
     B = b; clean(); show('ok');
     var ok = b.status === 'confirmado';
-    $('#okSum').innerHTML = [['Cliente', b.nome + ' ' + b.sobrenome], ['Serviço', b.svcName], ['Dia', fmtD(b.date)], ['Horário', b.t], ['Contato', (b.wa ? 'WhatsApp ' : 'Telefone ') + b.tel]]
+    $('#okSum').innerHTML = [['Cliente', b.nome + ' ' + b.sobrenome], ['Serviço', b.svcName + (b.opt ? ' · ' + b.opt : '')]].concat(b.price ? [['Valor', b.price]] : [], [['Dia', fmtD(b.date)], ['Horário', b.t], ['Contato', (b.wa ? 'WhatsApp ' : 'Telefone ') + b.tel]])
       .map(function (r) { return '<div><span>' + r[0] + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
     $('#okStt').textContent = note;
     $('#bCx').hidden = !ok;
@@ -107,8 +107,8 @@ button,.btn{font:inherit;font-weight:600;cursor:pointer;border-radius:999px;padd
     if (b.wa) {
       var n = String(b.tel).replace(/\D/g, ''); if (n.length <= 11) n = '55' + n;
       var site = new URL('index.html#agendar', location.href).href;
-      var t = 'Olá, ' + b.nome + '! Seu agendamento está confirmado ✅\n\n💇 ' + b.svcName + '\n📅 ' + fmtD(b.date) + '\n⏰ ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + site + '\n\nTe esperamos! – Marta Andreolli';
-      wa.href = 'https://wa.me/' + n + '?text=' + encodeURIComponent(t); wa.hidden = false;
+      var t = 'Olá, ' + b.nome + '! Seu agendamento está confirmado \u2705\n\n\uD83D\uDC87 ' + b.svcName + (b.opt ? ' · ' + b.opt : '') + (b.price ? '\n\uD83D\uDCB0 ' + b.price : '') + '\n\uD83D\uDCC5 ' + fmtD(b.date) + '\n\u23F0 ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + site + '\n\nTe esperamos! – Marta Andreolli';
+      wa.href = waUrl(n, t); wa.hidden = false;
     } else wa.hidden = true;
   }
   $('#bPrint').onclick = function () { if (B) printComanda(B, studioInfo(document)); };

@@ -56,7 +56,7 @@ service cloud.firestore {
     match /bookings/{id} {
       allow read: if signed() && (isAdmin() || resource.data.uid == request.auth.uid);
       allow create: if isAdmin() || (signed()
-        && request.resource.data.keys().hasOnly(['uid','email','nome','sobrenome','tel','wa','svc','svcName','date','t','status','createdAt'])
+        && request.resource.data.keys().hasOnly(['uid','email','nome','sobrenome','tel','wa','svc','svcName','opt','price','date','t','status','createdAt'])
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.status == 'pendente');

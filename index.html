@@ -264,6 +264,18 @@ footer{border-top:1px solid var(--line);padding-block:60px 40px}
 .lb-info p{color:var(--muted);margin:0}
 .meta{display:grid;gap:10px;margin-top:10px;padding-top:18px;border-top:1px solid var(--line);font-size:.86rem}
 .meta div{display:flex;justify-content:space-between;gap:12px}.meta span{color:var(--muted)}.meta b{font-weight:600;text-align:right}
+.lbls{display:grid;gap:10px}
+.lbl{display:grid;gap:8px;padding:14px 16px;border:1.5px solid var(--line);border-radius:18px;background:#fff}
+.lbl small{display:block;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.lbl b{font-weight:600}
+.lbl .pr{font-family:var(--display);font-size:1.6rem;font-weight:500;color:var(--purple-deep);line-height:1.1;text-align:left}
+.lbl .btn{justify-content:center;padding:12px 18px}
+.lbl.on{border-color:var(--purple);background:var(--lilac)}.lbl.on .pr{font-size:2.2rem}
+.lbl.sec{opacity:.9}.lbl.sec .pr{font-size:1.25rem}
+.lb-more{margin-top:4px;font-size:.78rem;color:var(--muted)}
+#bkOpt{display:grid;gap:8px}
+.opt.optp{display:flex;justify-content:space-between;align-items:center;gap:14px;width:100%;text-align:left}
+.opt.optp b{font-family:var(--display);font-size:1.3rem;font-weight:500;color:var(--purple-deep);white-space:nowrap}
 .lb-nav{display:flex;gap:10px;margin-top:auto;padding-top:18px}
 .lb-nav button{width:48px;height:48px;border-radius:50%;border:1.5px solid var(--line);display:grid;place-items:center;color:var(--purple-deep);transition:all .35s var(--ease)}
 .lb-nav button:hover{background:var(--grad);color:#fff;border-color:transparent;transform:scale(1.08)}
@@ -492,7 +504,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   <div class="wrap">
     <div class="sec-head">
       <div><span class="eyebrow">Serviços</span><h2>Cuidado em cada <em>detalhe</em></h2></div>
-      <p>Toque em um serviço para escolher horário. Valores de exemplo, ajustados na avaliação.</p>
+      <p>Toque em um serviço para ver os trabalhos e os valores.</p>
     </div>
     <div class="grid-s" id="svcGrid"></div>
   </div>
@@ -646,7 +658,8 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
               <button class="btn line" id="bkAgain">Fazer outro agendamento</button>
             </div>
 
-            <div class="panel"><span class="lab" style="margin-top:0">1. Serviço</span><div class="row" id="bkSvc"></div></div>
+            <div class="panel"><span class="lab" style="margin-top:0">1. Serviço</span><div class="row" id="bkSvc"></div>
+              <div id="bkOptBox" hidden style="margin-top:18px"><span class="lab" style="margin-top:0">O que você quer fazer?</span><div id="bkOpt"></div></div></div>
 
             <div class="panel">
               <span class="lab" style="margin-top:0">2. Dia</span>
@@ -676,9 +689,11 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
           <span class="lab" style="margin-top:0">Resumo</span>
           <div class="sum">
             <div><span>Serviço</span><b id="sumSvc">—</b></div>
+            <div data-noedit><span>O que fazer</span><b id="sumOpt">—</b></div>
             <div><span>Dia</span><b id="sumDay">—</b></div>
             <div><span>Horário</span><b id="sumTime">—</b></div>
             <div><span>Cliente</span><b id="sumWho">—</b></div>
+            <div data-noedit><span>Valor</span><b id="sumPrice">—</b></div>
             <div style="border:0;padding:0"><span>Contato</span><b id="sumTel">—</b></div>
           </div>
           <p class="err" id="bkErr" role="alert"></p>
@@ -711,8 +726,8 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
       <span class="eyebrow" id="lbCat"></span>
       <h3 id="lbTitle" style="font-size:2.4rem;margin:6px 0 4px"></h3>
       <p id="lbDesc"></p>
+      <div class="lbls" id="lbLines"></div>
       <div class="meta" id="lbMeta"></div>
-      <button class="btn solid" id="lbBook" style="margin-top:14px;justify-content:center">Quero um resultado assim</button>
       <div class="lb-nav"><button class="b" id="lbPrev" aria-label="Anterior"><svg viewBox="0 0 20 20"><path d="M3 10h13M11 4l6 6-6 6"/></svg></button><button id="lbNext" aria-label="Próximo"><svg viewBox="0 0 20 20"><path d="M3 10h13M11 4l6 6-6 6"/></svg></button></div>
     </div>
   </div>
@@ -801,28 +816,47 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   var eh = function(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); };
   function renderServices(){
     $('#svcGrid').innerHTML = SERVICES.map(function(s){
-      return '<button class="card" data-svc="'+eh(s.id)+'"><span class="ic"><svg class="ico"><use href="#i-'+eh(s.ic||'brilho')+'"/></svg></span><h3>'+eh(s.t)+'</h3><p>'+eh(s.d)+'</p><span class="price">'+eh(s.p)+arrow+'</span></button>';
+      return '<button class="card" data-svc="'+eh(s.id)+'"><span class="ic"><svg class="ico"><use href="#i-'+eh(s.ic||'brilho')+'"/></svg></span><h3>'+eh(s.t)+'</h3><p>'+eh(s.d)+'</p><span class="price">Ver trabalhos e valores'+arrow+'</span></button>';
     }).join('');
+  }
+  var PF = '';
+  function svcName(id){ var s = SERVICES.filter(function(x){return x.id===id;})[0]; return s ? s.t : ''; }
+  function guess(cat){ return {Cabelo:'corte','Coloração':'cor',Unhas:'unhas',Maquiagem:'make','Estética':'este'}[cat] }
+  function svcOf(w){ var g = (w.svc && SERVICES.some(function(x){return x.id===w.svc;})) ? w.svc : guess(w.cat); return SERVICES.some(function(x){return x.id===g;}) ? g : ''; }
+  /* um trabalho pode juntar vários serviços, cada um com o seu valor (w.lines = [{svc, n, p}]) */
+  function linesOf(w){
+    var l = (w.lines||[]).filter(function(x){ return x && SERVICES.some(function(s){return s.id===x.svc;}); });
+    if(l.length) return l;
+    var sv = svcOf(w); if(!sv) return [];
+    return [{svc:sv, n:'', p:(SERVICES.filter(function(x){return x.id===sv;})[0]||{}).p||''}];
+  }
+  function optsFor(svc){
+    var out = []; if(!svc) return out;
+    WORKS.forEach(function(w){ linesOf(w).forEach(function(l,i){ if(l.svc===svc) out.push({id:w.id+':'+i, n:l.n||w.t, p:l.p||''}); }); });
+    return out;
   }
   function renderWorks(){
-    var cats = ['Todos'].concat(WORKS.map(function(w){return w.cat}).filter(function(c,i,a){return c && a.indexOf(c)===i}));
-    $('#filters').innerHTML = cats.map(function(c,i){return '<button class="pill" data-cat="'+eh(c)+'" aria-pressed="'+(i===0)+'">'+eh(c)+'</button>'}).join('');
-    $('#mosaic').classList.remove('flat');
+    var used = {}; WORKS.forEach(function(w){ linesOf(w).forEach(function(l){ used[l.svc] = 1; }); });
+    if(PF && !used[PF]) PF = '';
+    $('#filters').innerHTML = [{id:'',t:'Todos'}].concat(SERVICES.filter(function(s){return used[s.id];})).map(function(s){return '<button class="pill" data-f="'+eh(s.id)+'" aria-pressed="'+(s.id===PF)+'">'+eh(s.t)+'</button>'}).join('');
     $('#mosaic').innerHTML = WORKS.map(function(w,i){
+      var ls = linesOf(w), names = ls.map(function(l){return svcName(l.svc);}).filter(function(n,k,a){return a.indexOf(n)===k;}).join(' · ');
       var inner = art(i+1,w.pal||0,motifOf(w.cat)) + pic(eh(w.photo!==undefined ? w.photo : PHOTOS[w.id]));
-      return '<button class="tile '+eh(w.cls||'')+'" data-w="'+i+'" data-cat="'+eh(w.cat)+'" aria-label="Abrir '+eh(w.t)+'">'+inner+'<span class="over"><small>'+eh(w.cat)+'</small><b>'+eh(w.t)+'</b></span><span class="plus"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span></button>';
+      return '<button class="tile '+eh(w.cls||'')+'" data-w="'+i+'" data-svcs="'+eh(ls.map(function(l){return l.svc;}).join(' '))+'" aria-label="Abrir '+eh(w.t)+'">'+inner+'<span class="over"><small>'+eh(names)+'</small><b>'+eh(w.t)+'</b></span><span class="plus"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg></span></button>';
     }).join('');
+    applyFilter();
   }
+  function applyFilter(){
+    $('#mosaic').classList.toggle('flat', !!PF);
+    $$('#mosaic .tile').forEach(function(t){ t.classList.toggle('hide', !!PF && (' '+t.dataset.svcs+' ').indexOf(' '+PF+' ')<0); });
+    $$('#filters .pill').forEach(function(p){ p.setAttribute('aria-pressed', p.dataset.f===PF); });
+  }
+  function setFilter(id, go){ PF = id||''; applyFilter(); if(go){ var sec = $('#portfolio'); if(sec) sec.scrollIntoView({behavior:'smooth'}); } }
   function renderTeam(){
     $('#teamGrid').innerHTML = TEAM.map(function(p,i){return '<div class="pro"><div class="ph">'+art(40+i,p.pal||0,0)+pic(eh(p.photo!==undefined ? p.photo : TEAMPH[i]))+'</div><b>'+eh(p.n)+'</b><span>'+eh(p.r)+'</span></div>'}).join('');
   }
   renderServices(); renderWorks();
-  $('#filters').addEventListener('click',function(e){
-    var b = e.target.closest('.pill'); if(!b) return;
-    $$('.pill').forEach(function(p){p.setAttribute('aria-pressed', p===b)});
-    $('#mosaic').classList.toggle('flat', b.dataset.cat!=='Todos');
-    $$('.tile').forEach(function(t){ t.classList.toggle('hide', b.dataset.cat!=='Todos' && t.dataset.cat!==b.dataset.cat) });
-  });
+  $('#filters').addEventListener('click',function(e){ var b = e.target.closest('.pill'); if(b) setFilter(b.dataset.f); });
 
   /* equipe e depoimentos */
   renderTeam();
@@ -858,22 +892,33 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   var toastT;
   function toast(msg){ $('#toastTxt').textContent = msg; var t = $('#toast'); t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function(){t.classList.remove('on')},3200); }
 
-  /* lightbox */
+  /* lightbox: mostra os serviços do trabalho com o valor em destaque; "Agendar" leva já escolhido para o agendamento */
   var cur = 0;
+  function lineHTML(w,l,j,cls,btn){
+    return '<div class="lbl '+cls+'"><div><small>'+eh(svcName(l.svc))+'</small><b>'+eh(l.n||w.t)+'</b></div><strong class="pr">'+eh(l.p||'sob consulta')+'</strong><button class="btn solid" type="button" data-bk="'+eh(l.svc)+'" data-opt="'+eh(w.id+':'+j)+'">'+btn+'</button></div>';
+  }
   function show(i){
-    cur = (i+WORKS.length)%WORKS.length; var w = WORKS[cur];
+    cur = i; var w = WORKS[cur];
     var ti = $('.tile[data-w="'+cur+'"] img.pic'), ps = ti ? (ti.getAttribute('src')||'') : '';
     if(ps.indexOf('images.unsplash.com')>-1 && ps.indexOf('photo-')>-1) ps = U(ps.split('photo-')[1].split('?')[0],1100);
     $('#lbArt').innerHTML = art(cur+1,w.pal,motifOf(w.cat)) + pic(ps);
-    $('#lbCat').textContent = w.cat; $('#lbTitle').textContent = w.t; $('#lbDesc').textContent = w.d;
-    $('#lbMeta').innerHTML = '<div><span>Profissional</span><b>'+w.who+'</b></div><div><span>Duração</span><b>'+w.time+'</b></div><div><span>Categoria</span><b>'+w.cat+'</b></div>';
+    var ls = linesOf(w), act = [], rest = [];
+    ls.forEach(function(l,j){ if(PF && l.svc!==PF) rest.push(lineHTML(w,l,j,'sec','Agendar')); else act.push(lineHTML(w,l,j,PF?'on':'','Agendar este serviço')); });
+    $('#lbCat').textContent = ls.map(function(l){return svcName(l.svc);}).filter(function(n,k,a){return a.indexOf(n)===k;}).join(' · ');
+    $('#lbTitle').textContent = w.t; $('#lbDesc').textContent = w.d;
+    $('#lbLines').innerHTML = ls.length ? act.join('') + (rest.length ? '<div class="lb-more">Este trabalho também inclui</div>'+rest.join('') : '') : '<button class="btn solid" type="button" data-bk="" data-opt="">Agendar horário</button>';
+    $('#lbMeta').innerHTML = (w.who ? '<div><span>Profissional</span><b>'+eh(w.who)+'</b></div>' : '')+(w.time ? '<div><span>Duração</span><b>'+eh(w.time)+'</b></div>' : '');
   }
-  function step(n){ show(cur+n); }
+  function step(n){
+    var v = []; WORKS.forEach(function(w,i){ if(!PF || linesOf(w).some(function(l){return l.svc===PF;})) v.push(i); });
+    if(!v.length) return; var k = v.indexOf(cur); show(v[(k+n+v.length)%v.length]);
+  }
   $('#mosaic').addEventListener('click',function(e){ var t = e.target.closest('.tile'); if(!t) return; show(+t.dataset.w); open($('#vLb')); });
   $('#lbPrev').onclick = function(){step(-1)}; $('#lbNext').onclick = function(){step(1)};
-  $('#lbBook').onclick = function(){ var w = WORKS[cur]; close($('#vLb')); setTimeout(function(){ openBook(svcOf(w)); },250); };
-  function guess(cat){ return {Cabelo:'corte','Coloração':'cor',Unhas:'unhas',Maquiagem:'make','Estética':'este'}[cat] }
-  function svcOf(w){ return (w.svc && SERVICES.some(function(x){return x.id===w.svc;})) ? w.svc : guess(w.cat); }
+  $('#lbLines').addEventListener('click',function(e){
+    var b = e.target.closest('[data-bk]'); if(!b) return;
+    close($('#vLb')); setTimeout(function(){ openBook(b.dataset.bk, b.dataset.opt); },250);
+  });
 
   /* agendamento: subpágina #agendar */
   /* Instagram: coloque só o @ do perfil (ex.: 'martaandreolli'). Vazio = os links ficam escondidos. */
@@ -896,7 +941,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     return Array.isArray(h.def) ? h.def : TIMES_DEF;
   }
   var today = new Date(); today.setHours(0,0,0,0);
-  var B = {user:LS.get('ma_user',null), svc:null, day:null, time:null, y:today.getFullYear(), m:today.getMonth(), done:null};
+  var B = {user:LS.get('ma_user',null), svc:null, opt:null, day:null, time:null, y:today.getFullYear(), m:today.getMonth(), done:null};
 
   var pad = function(n){ return ('0'+n).slice(-2); };
   var keyOf = function(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); };
@@ -920,13 +965,14 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function confirmUrl(id){ return new URL('confirmar.html?b='+id, location.href).href; }
   function waLink(b){
     var msg = 'Olá! Gostaria de confirmar meu agendamento no studio Marta Andreolli:\n\n'
-      +'👤 Cliente: '+b.nome+' '+b.sobrenome+'\n'
-      +'💇 Serviço: '+b.svcName+'\n'
-      +'📅 Data: '+dayLabel(fromKey(b.date))+'\n'
-      +'⏰ Horário: '+b.t+'\n'
-      +'📞 Contato: '+b.tel+'\n\n'
-      +'✅ Para confirmar este agendamento, toque no link:\n'+confirmUrl(b.id);
-    return 'https://wa.me/'+waNumber()+'?text='+encodeURIComponent(msg);
+      +'\uD83D\uDC64 Cliente: '+b.nome+' '+b.sobrenome+'\n'
+      +'\uD83D\uDC87 Serviço: '+b.svcName+(b.opt?' · '+b.opt:'')+'\n'
+      +(b.price?'\uD83D\uDCB0 Valor: '+b.price+'\n':'')
+      +'\uD83D\uDCC5 Data: '+dayLabel(fromKey(b.date))+'\n'
+      +'\u23F0 Horário: '+b.t+'\n'
+      +'\uD83D\uDCDE Contato: '+b.tel+'\n\n'
+      +'\u2705 Para confirmar este agendamento, toque no link:\n'+confirmUrl(b.id);
+    return window.waUrl ? waUrl(waNumber(), msg) : 'https://wa.me/'+waNumber()+'?text='+encodeURIComponent(msg);
   }
   function findB(id){ var l = MY.filter(function(x){ return x.id===id; })[0]; return l || (B.done && B.done.id===id ? B.done.data : null); }
 
@@ -960,7 +1006,7 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
     $('#bkDoneTxt').textContent = ok ? 'Tudo certo, '+b.nome+'! Seu horário está garantido. Imprima a sua comanda abaixo ou guarde esta tela.'
       : no ? 'Este horário foi liberado.'
       : 'Seu horário está reservado, '+b.nome+', mas só vale depois da confirmação. Toque em “Confirmar por WhatsApp”, envie a mensagem e aguarde a resposta do studio. Esta tela muda sozinha assim que for confirmado.';
-    $('#bkDoneSum').innerHTML = [['Serviço',b.svcName],['Dia',dayLabel(fromKey(b.date))],['Horário',b.t],['Cliente',b.nome+' '+b.sobrenome],['Contato',(b.wa?'WhatsApp ':'Telefone ')+b.tel]]
+    $('#bkDoneSum').innerHTML = [['Serviço',b.svcName+(b.opt?' · '+b.opt:'')]].concat(b.price?[['Valor',b.price]]:[],[['Dia',dayLabel(fromKey(b.date))],['Horário',b.t],['Cliente',b.nome+' '+b.sobrenome],['Contato',(b.wa?'WhatsApp ':'Telefone ')+b.tel]])
       .map(function(r){ return '<div><span>'+r[0]+'</span><b>'+esc(r[1])+'</b></div>'; }).join('');
     $('#bkDoneAct').innerHTML = ok ? '<button class="btn solid" type="button" data-print="'+b.id+'">Imprimir comanda</button>'
       : no ? '' : '<a class="btn solid" target="_blank" rel="noopener" href="'+waLink(b)+'">Confirmar por WhatsApp</a>';
@@ -998,6 +1044,13 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function renderSvc(){
     $('#bkSvc').innerHTML = SERVICES.map(function(s){ return '<button class="opt" data-svc="'+s.id+'" aria-pressed="'+(B.svc===s.id)+'">'+s.t+'</button>'; }).join('');
   }
+  function renderOpts(){
+    var box = $('#bkOptBox'), l = optsFor(B.svc);
+    if(!l.length){ box.hidden = true; B.opt = null; return; }
+    if(!l.some(function(x){return x.id===B.opt;})) B.opt = l.length===1 ? l[0].id : null;
+    box.hidden = false;
+    $('#bkOpt').innerHTML = l.map(function(o){ return '<button class="opt optp" data-opt="'+esc(o.id)+'" aria-pressed="'+(B.opt===o.id)+'"><span>'+esc(o.n)+'</span><b>'+esc(o.p||'sob consulta')+'</b></button>'; }).join('');
+  }
   function renderCal(){
     var first = new Date(B.y,B.m,1), total = new Date(B.y,B.m+1,0).getDate(), i, d, dt, st, sel, h = '';
     ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'].forEach(function(n,ix){ h += '<span class="dw" title="'+n+'">'+'DSTQQSS'.charAt(ix)+'</span>'; });
@@ -1021,6 +1074,8 @@ img.av{object-fit:cover;background:var(--lilac);display:block}
   function renderSummary(){
     var p = profileOf(), s = SERVICES.filter(function(x){ return x.id===B.svc; })[0];
     $('#sumSvc').textContent = s ? s.t : '—';
+    var o = optsFor(B.svc).filter(function(x){return x.id===B.opt;})[0];
+    $('#sumOpt').textContent = o ? o.n : '—'; $('#sumPrice').textContent = o ? (o.p||'sob consulta') : '—';
     $('#sumDay').textContent = B.day ? dayLabel(fromKey(B.day)) : '—';
     $('#sumTime').textContent = B.time || '—';
     $('#sumWho').textContent = p ? p.nome+' '+p.sobrenome : '—';
@@ -1031,7 +1086,7 @@ function renderMine(){
     $('#mineBox').hidden = !mine.length;
     $('#mineList').innerHTML = mine.map(function(b){
       var ok = b.status==='confirmado';
-      return '<div class="mrow"><span><b>'+dayLabel(fromKey(b.date))+' · '+b.t+'</b><br><small>'+esc(b.svcName)+'</small> <i class="stt'+(ok?' ok':'')+'">'+(ok?'Confirmado':'Aguardando')+'</i></span>'
+      return '<div class="mrow"><span><b>'+dayLabel(fromKey(b.date))+' · '+b.t+'</b><br><small>'+esc(b.svcName+(b.opt?' · '+b.opt:'')+(b.price?' · '+b.price:''))+'</small> <i class="stt'+(ok?' ok':'')+'">'+(ok?'Confirmado':'Aguardando')+'</i></span>'
         +'<span class="macts">'+(ok?'<button type="button" data-print="'+b.id+'">Imprimir</button>':'<a class="wal" target="_blank" rel="noopener" href="'+waLink(b)+'">Confirmar por WhatsApp</a>')
         +'<button type="button" data-cancel="'+b.id+'">Cancelar</button></span></div>';
     }).join('');
@@ -1041,7 +1096,7 @@ function renderMine(){
     if(ADM){
       $('#stLogin').hidden = $('#stProfile').hidden = $('#stBook').hidden = $('#mineBox').hidden = false;
       $('#bkWho').hidden = $('#bkDone').hidden = true; $('#pfAltBox').hidden = false;
-      renderSvc(); renderCal(); renderTimes(); renderSummary(); return;
+      renderSvc(); renderOpts(); renderCal(); renderTimes(); renderSummary(); return;
     }
     if(u) startSync(); $('#stLogin').hidden = !!u;
     $('#stProfile').hidden = stage!==1;
@@ -1051,7 +1106,7 @@ function renderMine(){
     if(u){ $('#bkMail').textContent = u.email; $('#bkAv').textContent = u.email.charAt(0).toUpperCase(); }
     if(stage===2){
       renderDone();
-      renderSvc(); renderCal(); renderTimes(); renderMine();
+      renderSvc(); renderOpts(); renderCal(); renderTimes(); renderMine();
     }
     renderSummary();
     $('#bkErr').textContent = '';
@@ -1084,7 +1139,7 @@ function renderMine(){
   };
   $('#bkOut').onclick = function(){
     if(fbAuth) fbAuth.signOut();
-    stopSync(); B.user = null; B.svc = B.day = B.time = B.done = null; LS.set('ma_user',null); renderBook(); toast('Você saiu da conta');
+    stopSync(); B.user = null; B.svc = B.opt = B.day = B.time = B.done = null; LS.set('ma_user',null); renderBook(); toast('Você saiu da conta');
   };
 
   /* dados da cliente */
@@ -1102,7 +1157,8 @@ function renderMine(){
   };
 
   /* escolhas e confirmação */
-  $('#bkSvc').addEventListener('click',function(e){ var b = e.target.closest('[data-svc]'); if(!b) return; B.svc = b.dataset.svc; renderSvc(); renderSummary(); });
+  $('#bkSvc').addEventListener('click',function(e){ var b = e.target.closest('[data-svc]'); if(!b) return; B.svc = b.dataset.svc; B.opt = null; renderSvc(); renderOpts(); renderSummary(); });
+  $('#bkOpt').addEventListener('click',function(e){ var b = e.target.closest('[data-opt]'); if(!b) return; B.opt = b.dataset.opt; renderOpts(); renderSummary(); });
   $('#calGrid').addEventListener('click',function(e){ var b = e.target.closest('.cd[data-d]'); if(!b || b.disabled) return; B.day = b.dataset.d; B.time = null; renderCal(); renderTimes(); renderSummary(); });
   $('#bkTime').addEventListener('click',function(e){ var b = e.target.closest('[data-t]'); if(!b || b.disabled) return; B.time = b.dataset.t; renderTimes(); renderSummary(); });
   function shiftMonth(n){ var d = new Date(B.y,B.m+n,1); B.y = d.getFullYear(); B.m = d.getMonth(); renderCal(); }
@@ -1119,18 +1175,21 @@ function onAct(e){
     var err = $('#bkErr'), p = profileOf(), btn = $('#bkGo');
     if(!B.user || !p) return err.textContent = 'Entre com o Google e preencha seus dados primeiro.';
     if(!B.svc) return err.textContent = 'Escolha o serviço.';
+    var opts = optsFor(B.svc), o = opts.filter(function(x){return x.id===B.opt;})[0];
+    if(opts.length && !o) return err.textContent = 'Escolha o que você quer fazer.';
     if(!B.day) return err.textContent = 'Escolha o dia no calendário.';
     if(!B.time) return err.textContent = 'Escolha o horário.';
     if(!db || !B.user.uid) return err.textContent = 'Não foi possível reservar agora. Entre com sua conta Google e tente de novo.';
     if(SLOTS[slotKey(B.day,B.time)]){ B.time = null; renderTimes(); renderSummary(); return err.textContent = 'Esse horário acabou de ser ocupado. Escolha outro.'; }
     var s = SERVICES.filter(function(x){ return x.id===B.svc; })[0], ref = db.collection('bookings').doc();
     var data = {uid:B.user.uid,email:B.user.email,nome:p.nome,sobrenome:p.sobrenome,tel:p.tel,wa:p.wa,svc:s.id,svcName:s.t,date:B.day,t:B.time,status:'pendente',createdAt:Date.now()};
+    if(o){ data.opt = o.n; if(o.p) data.price = o.p; }
     var batch = db.batch();
     batch.set(db.doc('slots/'+slotKey(B.day,B.time)),{date:B.day,t:B.time,status:'pendente',uid:B.user.uid,bid:ref.id});
     batch.set(ref,data);
     btn.disabled = true; err.textContent = '';
     batch.commit().then(function(){
-      data.id = ref.id; lastStatus[ref.id] = 'pendente'; B.done = {id:ref.id, data:data}; B.day = B.time = B.svc = null;
+      data.id = ref.id; lastStatus[ref.id] = 'pendente'; B.done = {id:ref.id, data:data}; B.day = B.time = B.svc = B.opt = null;
       btn.disabled = false; renderBook(); toast('Horário reservado. Agora confirme pelo WhatsApp'); window.scrollTo(0,0);
     }).catch(function(e){
       btn.disabled = false;
@@ -1140,10 +1199,10 @@ function onAct(e){
   };
 
   /* entradas do site para a subpágina */
-  function goBook(svc){ if(svc) B.svc = svc; if(isBook()) renderBook(); else location.hash = '#agendar'; }
-  function openBook(svc){ goBook(svc); }
+  function goBook(svc,opt){ if(svc){ B.svc = svc; B.opt = opt||null; } if(isBook()) renderBook(); else location.hash = '#agendar'; }
+  function openBook(svc,opt){ goBook(svc,opt); }
   $$('[data-book]').forEach(function(b){ b.addEventListener('click',function(){ goBook(); }); });
-  $('#svcGrid').addEventListener('click',function(e){ var c = e.target.closest('.card'); if(c) goBook(c.dataset.svc); });
+  $('#svcGrid').addEventListener('click',function(e){ var c = e.target.closest('.card'); if(c) setFilter(c.dataset.svc, true); });
 
   /* rotas: página inicial e #agendar */
   function isBook(){ return !$('#pageBook').hidden; }
@@ -1175,7 +1234,7 @@ function onAct(e){
       var tgt = kind==='services' ? SERVICES : kind==='works' ? WORKS : TEAM;
       tgt.length = 0; list.forEach(function(x){ tgt.push(x); });
       if(kind==='services'){ renderServices(); if(B.svc && !SERVICES.some(function(x){return x.id===B.svc;})) B.svc = null; if(isBook()) renderBook(); }
-      else if(kind==='works') renderWorks();
+      else if(kind==='works'){ renderWorks(); if(isBook()) renderBook(); }
       else renderTeam();
     }
   };
@@ -1204,7 +1263,7 @@ function onAct(e){
   /* subpágina de agendamento: só os textos fixos (ids "k…"; os textos que mudam sozinhos, como calendário e horários, ficam de fora) */
   var kn = 0;
   $$('.bk *').forEach(function(el){
-    if(el.closest('svg,script,style,input,#bkSvc,#calGrid,#calTitle,#bkTime,#timeHint,#mineList,#bkDone,#bkWho,#bkErr,#pfErr,.sum b,.cal-head button')) return;
+    if(el.closest('svg,script,style,input,#bkSvc,#calGrid,#calTitle,#bkTime,#timeHint,#mineList,#bkDone,#bkWho,#bkErr,#pfErr,#bkOptBox,[data-noedit],.sum b,.cal-head button')) return;
     el.setAttribute('data-eid','k'+(++kn)); el.setAttribute('data-o',(el.textContent||'').trim().slice(0,30));
   });
   reindex();
