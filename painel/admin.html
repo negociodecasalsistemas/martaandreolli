@@ -345,9 +345,17 @@ function seedList(k) {
   if (Array.isArray(state[k])) return;
   const Bn = W.__lists.builtin;
   if (k === 'services') state.services = $$('#svcGrid .card', D).map(c => ({ id: c.dataset.svc || uid('s'), ic: ((c.querySelector('use') || { getAttribute: () => '' }).getAttribute('href') || '').replace('#i-', '') || 'brilho', t: txt(c.querySelector('h3')), d: txt(c.querySelector('p')), p: txt(c.querySelector('.price')) }));
-  else if (k === 'works') state.works = $$('#mosaic .tile', D).map((t, i) => { const b = Bn.works[i] || {}; return { id: b.id || uid('w'), cat: t.dataset.cat || '', t: txt(t.querySelector('.over b')), d: b.d || '', who: b.who || '', time: b.time || '', cls: b.cls || '', pal: b.pal || 0, svc: '', photo: photoOf(t) }; });
+  else if (k === 'works') state.works = $$('#mosaic .tile', D).map((t, i) => { const b = Bn.works[i] || {}; return { id: b.id || uid('w'), cat: t.dataset.cat || '', lines: (t.dataset.svcs || '').split(' ').filter(Boolean).map(id => ({ svc: id, n: '', p: ((Bn.services || []).find(x => x.id === id) || {}).p || '' })), t: txt(t.querySelector('.over b')), d: b.d || '', who: b.who || '', time: b.time || '', cls: b.cls || '', pal: b.pal || 0, svc: '', photo: photoOf(t) }; });
   else state.team = $$('#teamGrid .pro', D).map((t, i) => ({ n: txt(t.querySelector('b')), r: txt(t.querySelector('span')), pal: (Bn.team[i] || {}).pal || 0, photo: photoOf(t) }));
 }
+const svcList = () => Array.isArray(state.services) ? state.services : ((W && W.__lists && W.__lists.builtin.services) || []);
+const GUESS = { Cabelo: 'corte', 'Coloração': 'cor', Unhas: 'unhas', Maquiagem: 'make', 'Estética': 'este' };
+const svcOfWork = it => { const sv = svcList(); if (it.svc && sv.some(x => x.id === it.svc)) return it.svc; const g = GUESS[it.cat]; return sv.some(x => x.id === g) ? g : ''; };
+const derivedLines = it => { const s = svcOfWork(it); return s ? [{ svc: s, n: '', p: (svcList().find(x => x.id === s) || {}).p || '' }] : []; };
+const ensureLines = it => { if (!Array.isArray(it.lines) || !it.lines.length) it.lines = derivedLines(it).length ? derivedLines(it) : [{ svc: '', n: '', p: '' }]; return it.lines; };
+const linesHTML = (it, sv) => `<label>Serviços e valores deste trabalho</label><p class="hint" style="margin:0 0 6px">No site aparece só a imagem. Ao tocar, a cliente vê cada serviço com o valor e agenda.</p>`
+  + ensureLines(it).map((l, j) => `<div class="card ln" data-j="${j}" style="margin:6px 0;padding:8px"><div class="row"><select data-l="svc"><option value="">Escolha o serviço</option>${sv.map(x => `<option value="${esc(x.id)}" ${l.svc === x.id ? 'selected' : ''}>${esc(x.t)}</option>`).join('')}</select><button class="sq dng" data-ldel title="Remover" style="flex:0 0 auto">${I('trash')}</button></div><div class="row" style="margin-top:6px"><input data-l="n" value="${esc(l.n || '')}" placeholder="O que é (ex.: Corte feminino)"><input data-l="p" value="${esc(l.p || '')}" placeholder="R$ 120" style="flex:0 0 38%"></div></div>`).join('')
+  + `<button type="button" class="addb" data-ladd style="margin:6px 0 4px">${I('plus')}Adicionar serviço</button>`;
 const applyKind = k => { if (W && W.__cms) W.__cms.applyLists({ [k]: state[k] }); };
 const changed = k => { save(); applyKind(k); };
 const fld = (lab, key, v, ph, list) => `<label>${lab}</label><input data-k="${key}" value="${esc(v)}" placeholder="${esc(ph || '')}"${list ? ' list="' + list + '"' : ''}>`;
@@ -360,15 +368,15 @@ function itemHTML(k, it, i, n) {
   let body = '', title = '';
   if (k === 'services') {
     title = it.t;
-    body = fld('Nome', 't', it.t) + `<label>Descrição</label><textarea data-k="d" rows="3">${esc(it.d)}</textarea>` + fld('Preço', 'p', it.p, 'a partir de R$ 100')
+    body = fld('Nome', 't', it.t) + `<label>Descrição</label><textarea data-k="d" rows="3">${esc(it.d)}</textarea><p class="hint">Os valores ficam no <b>Portfólio</b>, em cada trabalho. Tocar neste serviço no site abre o portfólio dele.</p>`
       + `<label>Ícone</label><div class="icp">${SVC_IC.map(n => `<button type="button" class="${it.ic === n ? 'on' : ''}" data-ic="${n}" title="${n}">${icoSvg(n)}</button>`).join('')}</div>`;
   } else if (k === 'works') {
     title = it.t;
-    const sv = Array.isArray(state.services) ? state.services : W.__lists.builtin.services;
-    body = fld('Título', 't', it.t) + fld('Categoria (vira um filtro)', 'cat', it.cat, 'Cabelo, Unhas…', 'cats') + `<label>Descrição</label><textarea data-k="d" rows="2">${esc(it.d)}</textarea>`
+    const sv = svcList();
+    body = fld('Título', 't', it.t) + `<label>Descrição</label><textarea data-k="d" rows="2">${esc(it.d)}</textarea>`
       + `<div class="row"><div>${fld('Profissional', 'who', it.who)}</div><div>${fld('Duração', 'time', it.time, '1h30')}</div></div>`
-      + `<div class="row"><div><label>Tamanho no mosaico</label><select data-k="cls">${[['', 'Normal'], ['tall', 'Alto'], ['wide', 'Largo']].map(o => `<option value="${o[0]}" ${(it.cls || '') === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></div>`
-      + `<div><label>Botão “Quero um resultado assim”</label><select data-k="svc"><option value="">Automático</option>${sv.map(x => `<option value="${esc(x.id)}" ${it.svc === x.id ? 'selected' : ''}>${esc(x.t)}</option>`).join('')}</select></div></div>` + photoBox(it);
+      + `<div class="row"><div><label>Tamanho no mosaico</label><select data-k="cls">${[['', 'Normal'], ['tall', 'Alto'], ['wide', 'Largo']].map(o => `<option value="${o[0]}" ${(it.cls || '') === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></div></div>`
+      + linesHTML(it, sv) + photoBox(it);
   } else {
     title = it.n;
     body = fld('Nome', 'n', it.n) + fld('Função', 'r', it.r, 'Colorista') + photoBox(it);
@@ -379,10 +387,8 @@ function renderCards(focus) {
   const p = $('#p-cards');
   if (!W || !W.__lists) { p.innerHTML = '<p class="hint">Carregando o site…</p>'; return; }
   seedList(ck); const L = state[ck];
-  const cats = [...new Set((state.works || []).map(w => w.cat).filter(Boolean))];
   p.innerHTML = `<div class="seg seg3" style="--k:${KO.indexOf(ck)}"><i></i>${KO.map(k => `<button type="button" data-k2="${k}" class="${k === ck ? 'on' : ''}">${KN[k][0]}</button>`).join('')}</div>`
     + `<p class="hint">Tudo que você muda aqui aparece no site na hora. Você também pode clicar num card dentro do site, à esquerda, para vir direto até ele.</p>`
-    + `<datalist id="cats">${cats.map(c => `<option value="${esc(c)}">`).join('')}</datalist>`
     + L.map((it, i) => itemHTML(ck, it, i, L.length)).join('')
     + `<button class="addb" id="c-add">${I('plus')}Adicionar ${KN[ck][1]}</button>`;
   $$('[data-th]', p).forEach(im => { const v = im.dataset.th; if (!v) return; if (/^fb:/.test(v)) W.__cms.getImg(v.slice(3)).then(d => { if (d) im.src = d; }); else im.src = v; });
@@ -396,9 +402,15 @@ $('#p-cards').addEventListener('click', async e => {
   if (e.target.closest('#c-add')) {
     const n = L.length;
     L.push(ck === 'services' ? { id: uid('s'), ic: 'brilho', t: 'Novo serviço', d: 'Descreva o serviço aqui.', p: 'a partir de R$ 100' }
-      : ck === 'works' ? { id: uid('w'), cat: (L[0] || {}).cat || 'Cabelo', t: 'Novo trabalho', d: 'Conte o que foi feito.', who: '', time: '', cls: '', pal: n % 9, svc: '', photo: '' }
+      : ck === 'works' ? { id: uid('w'), cat: '', t: 'Novo trabalho', d: 'Conte o que foi feito.', who: '', time: '', cls: '', pal: n % 9, svc: '', photo: '', lines: [{ svc: (svcList()[0] || {}).id || '', n: '', p: '' }] }
       : { n: 'Novo nome', r: 'Função', pal: n % 9, photo: '' });
     changed(ck); return renderCards(n);
+  }
+  const la = e.target.closest('[data-ladd]'), ld = e.target.closest('[data-ldel]');
+  if (la || ld) {
+    const c0 = e.target.closest('.it'), it0 = L[+c0.dataset.i]; ensureLines(it0);
+    if (la) it0.lines.push({ svc: '', n: '', p: '' }); else it0.lines.splice(+e.target.closest('.ln').dataset.j, 1);
+    changed(ck); return renderCards(+c0.dataset.i);
   }
   const card = e.target.closest('.it'); if (!card) return; const i = +card.dataset.i, it = L[i];
   const mv = e.target.closest('[data-mv]'), del = e.target.closest('[data-del]'), ic = e.target.closest('[data-ic]');
@@ -411,6 +423,8 @@ $('#p-cards').addEventListener('click', async e => {
   } else if (ic) { it.ic = ic.dataset.ic; changed(ck); $$('[data-ic]', card).forEach(b => b.classList.toggle('on', b === ic)); }
 });
 $('#p-cards').addEventListener('input', e => {
+  const lk = e.target.dataset.l;
+  if (lk) { const c0 = e.target.closest('.it'), ln = e.target.closest('.ln'); if (!c0 || !ln) return; ensureLines(state[ck][+c0.dataset.i])[+ln.dataset.j][lk] = e.target.value; return changed(ck); }
   const k = e.target.dataset.k, card = e.target.closest('.it'); if (!k || !card) return;
   const it = state[ck][+card.dataset.i]; it[k] = e.target.value;
   if (k === 'photo') { const th = $('.th', card); th.dataset.th = it.photo; if (it.photo) th.src = it.photo; }
@@ -579,7 +593,7 @@ function drawAgenda() {
   box.innerHTML = l.map(b => {
     const st = b.status === 'confirmado' ? ['ok', 'Confirmado'] : b.status === 'cancelado' ? ['no', 'Cancelado'] : ['', 'Aguardando'];
     return `<div class="card" data-b="${esc(b.id)}"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b>${esc(fmtD(b.date))} · ${esc(b.t)}</b><span class="stt ${st[0]}">${st[1]}</span></div>
-      <div style="margin-top:4px">${esc(b.nome + ' ' + b.sobrenome)} · ${esc(b.svcName)}</div>
+      <div style="margin-top:4px">${esc(b.nome + ' ' + b.sobrenome)} · ${esc(b.svcName)}${b.opt ? ' · ' + esc(b.opt) : ''}${b.price ? ' · <b>' + esc(b.price) + '</b>' : ''}</div>
       <div class="hint">${esc(b.wa ? 'WhatsApp ' : 'Telefone ')}${esc(b.tel)} · ${b.manual ? 'marcado por você' : esc(b.email)}</div>
       <div class="row wrap" style="margin-top:8px">${b.status === 'pendente' ? '<button class="pri" data-a="ok">' + I('check') + 'Confirmar</button>' : ''}${b.status === 'confirmado' ? '<button data-a="print">' + I('print') + 'Imprimir</button>' : ''}${b.wa ? '<button data-a="wa">' + I('chat') + 'Cliente</button>' : ''}${b.manual ? '' : `<button data-a="copy">${I('link')}Link</button>`}${b.status !== 'cancelado' ? '<button class="dng" data-a="cx">' + I('x') + 'Cancelar</button>' : ''}</div></div>`;
   }).join('') || '<p class="hint">Nenhum agendamento aqui.</p>';
@@ -604,8 +618,8 @@ async function agClick(e) {
     else if (a === 'copy') { await navigator.clipboard.writeText(confirmLink(b.id)); stat('Link de confirmação copiado ✓'); }
     else if (a === 'print') printComanda(b, studioInfo(D || document));
     else if (a === 'wa') {
-      const txt = 'Olá, ' + b.nome + '! ' + (b.status === 'confirmado' ? 'Seu agendamento está confirmado ✅' : 'Sobre o seu agendamento:') + '\n\n💇 ' + b.svcName + '\n📅 ' + fmtD(b.date) + '\n⏰ ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + new URL('../index.html#agendar', location.href).href + '\n\nTe esperamos! – Marta Andreolli';
-      window.open('https://wa.me/' + waNum(b.tel) + '?text=' + encodeURIComponent(txt), '_blank');
+      const txt = 'Olá, ' + b.nome + '! ' + (b.status === 'confirmado' ? 'Seu agendamento está confirmado \u2705' : 'Sobre o seu agendamento:') + '\n\n\uD83D\uDC87 ' + b.svcName + (b.opt ? ' · ' + b.opt : '') + (b.price ? '\n\uD83D\uDCB0 ' + b.price : '') + '\n\uD83D\uDCC5 ' + fmtD(b.date) + '\n\u23F0 ' + b.t + '\n\nVocê pode ver e imprimir a sua comanda aqui: ' + new URL('../index.html#agendar', location.href).href + '\n\nTe esperamos! – Marta Andreolli';
+      window.open(waUrl(waNum(b.tel), txt), '_blank');
     }
   } catch (er) { stat('Erro: ' + er.message, 1); UI.alert(er.message, { kind: 'error' }); }
 }
@@ -673,10 +687,19 @@ function renderHours() {
 }
 
 /* ---------- marcar manualmente (encaixes, inclusive em dias indisponíveis) ---------- */
-const mc = { nome: '', sobre: '', tel: '', wa: true, svc: '', date: '', t: '' };
+const mc = { nome: '', sobre: '', tel: '', wa: true, svc: '', opt: '', optn: '', price: '', date: '', t: '' };
 let mcDone = null;
 const maskTel = v => { v = v.replace(/\D/g, '').slice(0, 11); return v.length > 10 ? '(' + v.slice(0, 2) + ') ' + v.slice(2, 7) + '-' + v.slice(7) : v.length > 6 ? '(' + v.slice(0, 2) + ') ' + v.slice(2, 6) + '-' + v.slice(6) : v.length > 2 ? '(' + v.slice(0, 2) + ') ' + v.slice(2) : v; };
-const svcList = () => Array.isArray(state.services) ? state.services : ((W && W.__lists && W.__lists.builtin.services) || []);
+function optsOf(svc) {
+  const ws = Array.isArray(state.works) ? state.works : ((W && W.__lists && W.__lists.builtin.works) || []), out = [];
+  ws.forEach(w => { const ls = (w.lines && w.lines.length) ? w.lines : derivedLines(w); ls.forEach((l, i) => { if (l.svc === svc) out.push({ id: w.id + ':' + i, n: l.n || w.t, p: l.p || '' }); }); });
+  return out;
+}
+function drawMcOpt() {
+  const b = $('#mc-optbox'); if (!b) return; const l = optsOf(mc.svc);
+  b.innerHTML = (l.length ? `<label>O que a cliente quer fazer</label><select id="mc-opt"><option value="">Escolha…</option>${l.map(o => `<option value="${esc(o.id)}" ${o.id === mc.opt ? 'selected' : ''}>${esc(o.n)}${o.p ? ' — ' + esc(o.p) : ''}</option>`).join('')}</select>` : '')
+    + `<label>Valor</label><input id="mc-price" value="${esc(mc.price)}" placeholder="R$ 120 (opcional)">`;
+}
 const liveBK = () => BK.filter(b => b.status !== 'cancelado');
 function dayStatus(k) {
   const l = dayTimes(k), bs = liveBK().filter(b => b.date === k), busy = new Set(bs.map(b => b.t));
@@ -693,6 +716,7 @@ function renderMarcar() {
     <label>Telefone / WhatsApp</label><input id="mc-tel" inputmode="tel" placeholder="(15) 99999-0000" value="${esc(mc.tel)}">
     <label class="tg" style="margin:8px 0 0"><input type="checkbox" id="mc-wa" ${mc.wa ? 'checked' : ''}>Este número é WhatsApp</label>
     <label>Serviço</label><select id="mc-svc">${sv.map(x => `<option value="${esc(x.id)}" ${x.id === mc.svc ? 'selected' : ''}>${esc(x.t)}</option>`).join('')}</select>
+    <div id="mc-optbox"></div>
     <div class="row"><div><label>Dia</label><input type="date" id="mc-date" min="${tk}" value="${esc(mc.date)}"></div><div><label>Horário</label><input type="time" id="mc-t" value="${esc(mc.t)}"></div></div>
     <div id="mc-grid"></div>
     <p class="err" id="mc-err" role="alert"></p>
@@ -704,7 +728,10 @@ function renderMarcar() {
     const id = e.target.id, clear = () => { mcDone = null; $('#mc-res').innerHTML = ''; $('#mc-err').textContent = ''; };
     if (id === 'mc-nome') mc.nome = e.target.value; else if (id === 'mc-sobre') mc.sobre = e.target.value;
     else if (id === 'mc-tel') { e.target.value = mc.tel = maskTel(e.target.value); }
-    else if (id === 'mc-wa') mc.wa = e.target.checked; else if (id === 'mc-svc') mc.svc = e.target.value;
+    else if (id === 'mc-wa') mc.wa = e.target.checked;
+    else if (id === 'mc-svc') { mc.svc = e.target.value; mc.opt = mc.optn = mc.price = ''; drawMcOpt(); }
+    else if (id === 'mc-opt') { const o = optsOf(mc.svc).find(x => x.id === e.target.value); mc.opt = o ? o.id : ''; mc.optn = o ? o.n : ''; mc.price = o ? o.p : ''; $('#mc-price').value = mc.price; }
+    else if (id === 'mc-price') mc.price = e.target.value;
     else if (id === 'mc-date') { mc.date = e.target.value; mc.t = ''; $('#mc-t').value = ''; drawMarcar(); }
     else if (id === 'mc-t') { mc.t = e.target.value; drawMarcar(); } else return;
     clear();
@@ -715,11 +742,11 @@ function renderMarcar() {
     else if (dd) { mc.date = dd.dataset.dd; mc.t = ''; $('#mc-date').value = mc.date; $('#mc-t').value = ''; drawMarcar(); p.scrollTop = 0; }
     else if (m && mcDone) {
       if (m.dataset.mc === 'print') printComanda(mcDone, studioInfo(D || document));
-      else window.open('https://wa.me/' + waNum(mcDone.tel) + '?text=' + encodeURIComponent('Olá, ' + mcDone.nome + '! Seu agendamento está confirmado ✅\n\n💇 ' + mcDone.svcName + '\n📅 ' + fmtD(mcDone.date) + '\n⏰ ' + mcDone.t + '\n\nTe esperamos! – Marta Andreolli'), '_blank');
+      else window.open(waUrl(waNum(mcDone.tel), 'Olá, ' + mcDone.nome + '! Seu agendamento está confirmado \u2705\n\n\uD83D\uDC87 ' + mcDone.svcName + (mcDone.opt ? ' · ' + mcDone.opt : '') + (mcDone.price ? '\n\uD83D\uDCB0 ' + mcDone.price : '') + '\n\uD83D\uDCC5 ' + fmtD(mcDone.date) + '\n\u23F0 ' + mcDone.t + '\n\nTe esperamos! – Marta Andreolli'), '_blank');
     }
     else if (e.target.closest('#mc-go')) marcar();
   };
-  drawMarcar();
+  drawMcOpt(); drawMarcar();
 }
 function drawMarcar() {
   const g = $('#mc-grid'), l = $('#mc-list'); if (!g || !l) return;
@@ -729,7 +756,7 @@ function drawMarcar() {
     ? `<span class="chip tk" title="${esc(taken.get(t).nome + ' ' + taken.get(t).sobrenome)}">${t} · ${esc(taken.get(t).nome)}</span>`
     : `<button type="button" class="chip pk ${mc.t === t ? 'on' : ''}" data-pk="${t}">${t}</button>`).join('') || '<span class="hint">Sem horários liberados neste dia. Digite o horário acima.</span>'}</div>`;
   const by = {}; liveBK().filter(b => b.date >= todayKey()).sort((a, b) => (a.date + a.t) < (b.date + b.t) ? -1 : 1).forEach(b => (by[b.date] = by[b.date] || []).push(b));
-  l.innerHTML = Object.keys(by).sort().map(d => `<div class="card" style="padding:0"><div data-dd="${d}" style="display:flex;justify-content:space-between;gap:8px;padding:10px;cursor:pointer;${d === k ? 'background:#f6efe6;' : ''}border-radius:10px 10px 0 0"><b>${esc(fmtD(d))}</b><span class="hint">${esc(dayStatus(d))}</span></div>${by[d].map(b => `<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--line)"><b>${esc(b.t)}</b><span style="flex:1;min-width:0">${esc((b.nome + ' ' + b.sobrenome).trim())}<br><span class="hint">${esc(b.svcName)}${b.manual ? ' · manual' : ''}</span></span><span class="stt ${b.status === 'confirmado' ? 'ok' : ''}">${b.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span></div>`).join('')}</div>`).join('') || '<p class="hint">Nada agendado a partir de hoje.</p>';
+  l.innerHTML = Object.keys(by).sort().map(d => `<div class="card" style="padding:0"><div data-dd="${d}" style="display:flex;justify-content:space-between;gap:8px;padding:10px;cursor:pointer;${d === k ? 'background:#f6efe6;' : ''}border-radius:10px 10px 0 0"><b>${esc(fmtD(d))}</b><span class="hint">${esc(dayStatus(d))}</span></div>${by[d].map(b => `<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;border-top:1px solid var(--line)"><b>${esc(b.t)}</b><span style="flex:1;min-width:0">${esc((b.nome + ' ' + b.sobrenome).trim())}<br><span class="hint">${esc(b.svcName + (b.opt ? ' · ' + b.opt : '') + (b.price ? ' · ' + b.price : ''))}${b.manual ? ' · manual' : ''}</span></span><span class="stt ${b.status === 'confirmado' ? 'ok' : ''}">${b.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span></div>`).join('')}</div>`).join('') || '<p class="hint">Nada agendado a partir de hoje.</p>';
 }
 async function marcar() {
   const err = $('#mc-err'), btn = $('#mc-go'); err.textContent = '';
@@ -744,10 +771,11 @@ async function marcar() {
     if ((await db.doc('slots/' + sid).get()).exists) { btn.disabled = false; return err.textContent = 'Esse horário já está ocupado. Escolha outro.'; }
     const ref = db.collection('bookings').doc(), now = Date.now();
     const data = { uid: 'manual', email: '', nome, sobrenome: sob, tel: mc.tel, wa: mc.wa, svc: s.id, svcName: s.t, date: mc.date, t: mc.t, status: 'confirmado', createdAt: now, confirmedAt: now, confirmedBy: me, manual: true };
+    if (mc.optn) data.opt = mc.optn; if (mc.price.trim()) data.price = mc.price.trim();
     const batch = db.batch();
     batch.set(ref, data); batch.set(db.doc('slots/' + sid), { date: mc.date, t: mc.t, status: 'confirmado', uid: 'manual', bid: ref.id });
     await batch.commit();
-    mcDone = { id: ref.id, ...data }; mc.nome = mc.sobre = mc.tel = ''; mc.t = '';
+    mcDone = { id: ref.id, ...data }; mc.nome = mc.sobre = mc.tel = ''; mc.t = ''; mc.opt = mc.optn = mc.price = '';
     stat('Agendamento marcado e confirmado ✓'); renderMarcar();
   } catch (e) {
     btn.disabled = false;

@@ -13,6 +13,12 @@
     } catch (x) { return {}; }
   };
 
+  /* link do WhatsApp: no celular usa wa.me; no computador usa o WhatsApp Web (o aplicativo de Windows troca os emojis por “�”) */
+  window.waUrl = function (num, text) {
+    var mob = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''), t = encodeURIComponent(text);
+    return mob ? 'https://wa.me/' + num + '?text=' + t : 'https://web.whatsapp.com/send?phone=' + num + '&text=' + t;
+  };
+
   window.comandaHTML = function (b, o) {
     o = o || {};
     var addr = o.addr || 'R. Gonçalves Crespo, 439-359 · Vila Adélia, Sorocaba – SP';
@@ -23,11 +29,12 @@
     var contato = (b.wa ? 'WhatsApp ' : 'Telefone ') + (b.tel || '');
     var rows = [
       ['Cliente', (b.nome || '') + ' ' + (b.sobrenome || '')],
-      ['Serviço', b.svcName || ''],
+      ['Serviço', (b.svcName || '') + (b.opt ? ' · ' + b.opt : '')],
+      b.price ? ['Valor', b.price] : null,
       ['Data', DAYN[dt.getDay()] + ', ' + dt.getDate() + ' de ' + MONN[dt.getMonth()] + ' de ' + dt.getFullYear()],
       ['Horário', b.t],
       ['Contato', contato]
-    ].map(function (r) { return '<tr><th>' + e(r[0]) + '</th><td>' + e(r[1]) + '</td></tr>'; }).join('');
+    ].filter(Boolean).map(function (r) { return '<tr><th>' + e(r[0]) + '</th><td' + (r[0] === 'Valor' ? ' class="val"' : '') + '>' + e(r[1]) + '</td></tr>'; }).join('');
 
     return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Comanda · Marta Andreolli</title>'
       + '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">'
@@ -55,6 +62,7 @@
       + '.when em{font-style:normal;font-size:3mm;color:#776d63}'
       + 'table{width:100%;border-collapse:collapse;margin-top:2mm;text-align:left}'
       + 'th{width:26%;padding:2.6mm 0;font-size:2.5mm;letter-spacing:.16em;text-transform:uppercase;color:#a0704a;font-weight:700;border-bottom:.2mm solid #ece4da;vertical-align:top}'
+      + 'td.val{font:500 6mm/1 "Cormorant Garamond",Georgia,serif;color:#8f5f3a}'
       + 'td{padding:2.4mm 0;font-size:3.5mm;font-weight:600;border-bottom:.2mm solid #ece4da;text-align:right}'
       + '.foot{margin-top:auto;width:100%;padding-top:5mm}'
       + '.note{font-size:2.9mm;line-height:1.5;color:#776d63;max-width:96mm;margin:0 auto}'
